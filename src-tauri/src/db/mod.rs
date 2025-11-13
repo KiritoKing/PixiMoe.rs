@@ -14,10 +14,10 @@ pub async fn init_pool(app_data_dir: PathBuf) -> Result<SqlitePool, sqlx::Error>
             if path.is_absolute() {
                 path.to_path_buf()
             } else {
-                // Relative path: resolve against project root (where .env is)
+                // Relative path: resolve against src-tauri directory (where .env is)
                 if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
-                    // In dev mode, use project root (parent of src-tauri)
-                    PathBuf::from(manifest_dir).parent().unwrap().join(path)
+                    // In dev mode, resolve relative to CARGO_MANIFEST_DIR (src-tauri)
+                    PathBuf::from(manifest_dir).join(path)
                 } else {
                     // Fallback to current dir
                     env::current_dir()

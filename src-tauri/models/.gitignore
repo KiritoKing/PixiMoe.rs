@@ -3,3 +3,5 @@
 *.pb
 *.pth
 *.pt
+
+selected_tags.csv

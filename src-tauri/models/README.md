@@ -30,10 +30,50 @@ This directory contains ONNX models for AI-powered features.
 
 ## Setup Instructions
 
-1. Download required models from sources above
-2. Place `.onnx` files in this directory
-3. Ensure files are named exactly as specified above
-4. Model files are excluded from Git (see `.gitignore`)
+### Downloading the Image Tagging Model
+
+1. **Visit Hugging Face Model Page**:
+   ```
+   https://huggingface.co/SmilingWolf/wd-swinv2-tagger-v3
+   ```
+
+2. **Download Files**:
+   - Click on "Files and versions" tab
+   - Download `model.onnx` (~100MB)
+   - Download `selected_tags.csv` (tag labels)
+
+3. **Place in Models Directory**:
+   ```bash
+   cd src-tauri/models
+   # Rename model.onnx to swin-v2-tagger-v3.onnx
+   mv ~/Downloads/model.onnx ./swin-v2-tagger-v3.onnx
+   cp ~/Downloads/selected_tags.csv ./selected_tags.csv
+   ```
+
+4. **Verify Files**:
+   ```bash
+   ls -lh src-tauri/models/
+   # Should show:
+   # swin-v2-tagger-v3.onnx (~100MB)
+   # selected_tags.csv (~50KB)
+   ```
+
+### Alternative: Download via CLI
+
+```bash
+# Using huggingface-cli (install via: pip install huggingface-hub)
+cd src-tauri/models
+huggingface-cli download SmilingWolf/wd-swinv2-tagger-v3 model.onnx --local-dir .
+huggingface-cli download SmilingWolf/wd-swinv2-tagger-v3 selected_tags.csv --local-dir .
+mv model.onnx swin-v2-tagger-v3.onnx
+```
+
+### Important Notes
+
+- Model files are **excluded from Git** (see `.gitignore`)
+- Without the model, AI tagging will be **disabled** (app will still work for manual tagging)
+- First run will be slow while ONNX Runtime initializes
+- Model is loaded once at startup and cached in memory
 
 ## Performance Notes
 

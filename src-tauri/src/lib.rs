@@ -1,8 +1,8 @@
 // Module declarations
+pub mod ai;
+pub mod commands;
 pub mod db;
 pub mod error;
-pub mod commands;
-pub mod ai;
 pub mod protocols;
 
 use tauri::Manager;
@@ -19,17 +19,22 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .register_asynchronous_uri_scheme_protocol("app-asset", |app, request, responder| {
+            eprintln!("🔔 app-asset protocol handler triggered");
             let app_handle = app.app_handle();
             match protocols::handle_asset_protocol(&app_handle, &request) {
-                Ok(response) => responder.respond(response),
+                Ok(response) => {
+                    eprintln!("✅ Sending response with status: {:?}", response.status());
+                    responder.respond(response)
+                }
                 Err(e) => {
-                    eprintln!("Protocol error: {}", e);
+                    eprintln!("❌ Protocol error: {}", e);
                     responder.respond(
                         tauri::http::Response::builder()
                             .status(500)
                             .body(b"Internal server error".to_vec())
-                            .unwrap()
+                            .unwrap(),
                     )
                 }
             }
@@ -37,25 +42,43 @@ pub fn run() {
         .setup(|app| {
             // Register protocol handlers first
             protocols::register_protocols(app)?;
-            
+
             // Get app data directory
-            let app_data_dir = app.path().app_data_dir()
+            let app_data_dir = app
+                .path()
+                .app_data_dir()
                 .expect("Failed to get app data directory");
-            
+
             // Initialize database connection pool
             let app_handle = app.app_handle().clone();
+            let app_handle_for_thumbnails = app.app_handle().clone();
             tauri::async_runtime::block_on(async move {
-                let pool = db::init_pool(app_data_dir).await
+                let pool = db::init_pool(app_data_dir)
+                    .await
                     .expect("Failed to initialize database pool");
-                
+
                 // Run migrations
-                db::run_migrations(&pool).await
+                db::run_migrations(&pool)
+                    .await
                     .expect("Failed to run database migrations");
-                
+
+                // Regenerate missing thumbnails in background
+                let pool_clone = pool.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = commands::files::regenerate_missing_thumbnails(
+                        &app_handle_for_thumbnails,
+                        &pool_clone,
+                    )
+                    .await
+                    {
+                        eprintln!("Failed to regenerate missing thumbnails: {}", e);
+                    }
+                });
+
                 // Store pool in app state
                 app_handle.manage(pool);
             });
-            
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
