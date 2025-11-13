@@ -7,12 +7,6 @@ pub mod protocols;
 
 use tauri::Manager;
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Load .env file in development mode
@@ -25,12 +19,31 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .register_asynchronous_uri_scheme_protocol("app-asset", |app, request, responder| {
+            let app_handle = app.app_handle();
+            match protocols::handle_asset_protocol(&app_handle, &request) {
+                Ok(response) => responder.respond(response),
+                Err(e) => {
+                    eprintln!("Protocol error: {}", e);
+                    responder.respond(
+                        tauri::http::Response::builder()
+                            .status(500)
+                            .body(b"Internal server error".to_vec())
+                            .unwrap()
+                    )
+                }
+            }
+        })
         .setup(|app| {
+            // Register protocol handlers first
+            protocols::register_protocols(app)?;
+            
             // Get app data directory
             let app_data_dir = app.path().app_data_dir()
                 .expect("Failed to get app data directory");
             
             // Initialize database connection pool
+            let app_handle = app.app_handle().clone();
             tauri::async_runtime::block_on(async move {
                 let pool = db::init_pool(app_data_dir).await
                     .expect("Failed to initialize database pool");
@@ -40,12 +53,23 @@ pub fn run() {
                     .expect("Failed to run database migrations");
                 
                 // Store pool in app state
-                app.manage(pool);
+                app_handle.manage(pool);
             });
             
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![
+            // File commands
+            commands::files::import_file,
+            commands::files::get_all_files,
+            commands::files::get_file_by_hash,
+            commands::files::search_files_by_tags,
+            // Tag commands
+            commands::tags::get_all_tags,
+            commands::tags::get_file_tags,
+            commands::tags::add_tag_to_file,
+            commands::tags::remove_tag_from_file,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
