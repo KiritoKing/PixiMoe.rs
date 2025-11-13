@@ -1,0 +1,5 @@
+# Exclude large ONNX model files from version control
+*.onnx
+*.pb
+*.pth
+*.pt
