@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useFiles } from "@/lib/hooks";
 import type { FileRecord, ProgressEvent } from "@/types";
 import { ImageViewer } from "./ImageViewer";
-import { BatchTagEditor } from "@/components/tags";
+import { BatchTagEditor } from "@/components/tags/BatchTagEditor";
 import { ImageCard } from "./ImageCard";
 
 interface ImageGridProps {

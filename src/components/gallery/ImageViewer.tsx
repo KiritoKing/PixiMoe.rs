@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { X, ChevronLeft, ChevronRight, Wand2, Loader2 } from "lucide-react";
 import { useFileTags, useAddTag, useRemoveTag, useRunAITagging } from "@/lib/hooks";
 import type { FileRecord } from "@/types";
-import { TagInput } from "@/components/tags";
+import { TagInput } from "@/components/tags/TagInput";
 import toast from "react-hot-toast";
 
 interface ImageViewerProps {

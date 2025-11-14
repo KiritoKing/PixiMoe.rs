@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
-import { ImageGrid } from "./components/gallery";
-import { TagFilterPanel } from "./components/tags";
-import { ImportButton } from "./components/import";
+import { ImageGrid } from "./components/gallery/ImageGrid";
+import { TagFilterPanel } from "./components/tags/TagFilterPanel";
+import { ImportButton } from "./components/import/ImportButton";
 import { useFiles, useSearchFiles } from "./lib/hooks";
 import "./App.css";
 

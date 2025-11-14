@@ -9,34 +9,33 @@ components/
 ├── gallery/          # 图片展示相关组件
 │   ├── ImageGrid.tsx       # 图片网格布局
 │   ├── ImageCard.tsx       # 单个图片卡片
-│   ├── ImageViewer.tsx     # 图片查看器
-│   └── index.ts
+│   └── ImageViewer.tsx     # 图片查看器
 ├── tags/             # 标签管理相关组件
 │   ├── TagInput.tsx        # 标签输入框
 │   ├── TagFilterPanel.tsx  # 标签筛选面板
-│   ├── BatchTagEditor.tsx  # 批量标签编辑器
-│   └── index.ts
+│   └── BatchTagEditor.tsx  # 批量标签编辑器
 ├── import/           # 导入相关组件
-│   ├── ImportButton.tsx    # 导入按钮
-│   └── index.ts
-├── ui/               # 通用UI组件
-│   └── button.tsx          # 按钮组件
-└── index.ts          # 统一导出文件
+│   └── ImportButton.tsx    # 导入按钮
+└── ui/               # 通用UI组件
+    └── button.tsx          # 基础按钮组件
 ```
 
 ## 导入方式
 
-### 方式一：从子目录导入
+### 直接导入组件
 ```typescript
-import { ImageGrid, ImageCard } from '@/components/gallery';
-import { TagInput, TagFilterPanel } from '@/components/tags';
-import { ImportButton } from '@/components/import';
+import { ImageGrid, ImageCard } from '@/components/gallery/ImageGrid';
+import { ImageViewer } from '@/components/gallery/ImageViewer';
+import { TagInput, TagFilterPanel } from '@/components/tags/TagInput';
+import { BatchTagEditor } from '@/components/tags/BatchTagEditor';
+import { ImportButton } from '@/components/import/ImportButton';
+import { Button } from '@/components/ui/button';
 ```
 
-### 方式二：从根目录统一导入
-```typescript
-import { ImageGrid, TagInput, ImportButton } from '@/components';
-```
+### 重要原则
+- **禁止使用 barrel files (index.ts)**：不允许创建或使用 barrel 文件来重新导出组件
+- **直接导入**：始终直接从组件文件导入，确保导入路径明确
+- **一个组件一个文件**：每个组件都应该有自己的文件，并直接导出
 
 ## 组件分类说明
 
