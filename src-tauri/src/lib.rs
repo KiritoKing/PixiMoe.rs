@@ -22,22 +22,25 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .register_asynchronous_uri_scheme_protocol("app-asset", |app, request, responder| {
             eprintln!("🔔 app-asset protocol handler triggered");
-            let app_handle = app.app_handle();
-            match protocols::handle_asset_protocol(&app_handle, &request) {
-                Ok(response) => {
-                    eprintln!("✅ Sending response with status: {:?}", response.status());
-                    responder.respond(response)
+            let app_handle = app.app_handle().clone();
+            let request = request.clone();
+            tauri::async_runtime::spawn(async move {
+                match protocols::handle_asset_protocol(&app_handle, &request).await {
+                    Ok(response) => {
+                        eprintln!("✅ Sending response with status: {:?}", response.status());
+                        responder.respond(response)
+                    }
+                    Err(e) => {
+                        eprintln!("❌ Protocol error: {}", e);
+                        responder.respond(
+                            tauri::http::Response::builder()
+                                .status(500)
+                                .body(b"Internal server error".to_vec())
+                                .unwrap(),
+                        )
+                    }
                 }
-                Err(e) => {
-                    eprintln!("❌ Protocol error: {}", e);
-                    responder.respond(
-                        tauri::http::Response::builder()
-                            .status(500)
-                            .body(b"Internal server error".to_vec())
-                            .unwrap(),
-                    )
-                }
-            }
+            });
         })
         .setup(|app| {
             // Register protocol handlers first
@@ -87,11 +90,18 @@ pub fn run() {
             commands::files::get_all_files,
             commands::files::get_file_by_hash,
             commands::files::search_files_by_tags,
+            commands::files::get_thumbnail_url,
+            commands::files::tag_file_with_ai,
+            commands::files::tag_files_batch,
             // Tag commands
             commands::tags::get_all_tags,
             commands::tags::get_file_tags,
             commands::tags::add_tag_to_file,
+            commands::tags::add_tags_to_files,
             commands::tags::remove_tag_from_file,
+            commands::tags::remove_tag_from_files,
+            commands::tags::create_tag,
+            commands::tags::search_tags,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

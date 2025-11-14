@@ -34,6 +34,8 @@ pub struct ImportResult {
 pub struct ProgressEvent {
     pub stage: String,
     pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_hash: Option<String>,
 }
 
 // ============================================================================
@@ -59,11 +61,12 @@ pub fn calculate_blake3_hash(path: &Path) -> Result<String, AppError> {
 }
 
 /// Generate a WebP thumbnail with smart cropping
+/// Returns the path to the generated thumbnail
 pub fn generate_thumbnail(
     image_path: &Path,
     output_path: &Path,
     thumbnail_size: u32,
-) -> Result<(), AppError> {
+) -> Result<PathBuf, AppError> {
     eprintln!("  [Thumbnail] Creating output directory...");
     // Create output directory if it doesn't exist
     if let Some(parent) = output_path.parent() {
@@ -93,7 +96,7 @@ pub fn generate_thumbnail(
     fs::write(output_path, &*webp_data)?;
 
     eprintln!("  [Thumbnail] Complete!");
-    Ok(())
+    Ok(output_path.to_path_buf())
 }
 
 /// Resize and center crop an image to a square
@@ -140,18 +143,43 @@ pub fn get_thumbnail_dir(app: &AppHandle) -> Result<PathBuf, AppError> {
 }
 
 /// Automatically tag a file using AI
+/// Emits ai_tagging_progress events with stages: classifying, saving_tags, complete, error
 async fn tag_file_automatically(
-    _app: &AppHandle,
+    app: &AppHandle,
     pool: &SqlitePool,
     file_hash: &str,
     file_path: &Path,
-) -> Result<(), AppError> {
+) -> Result<usize, AppError> {
     use crate::ai::tagger;
+
+    // Emit progress: classifying
+    app.emit(
+        "ai_tagging_progress",
+        ProgressEvent {
+            stage: "classifying".to_string(),
+            message: format!("Running AI inference for {}...", file_hash),
+            file_hash: None,
+        },
+    )
+    .ok();
 
     // Run AI classification
     let predictions = tagger::classify_image(file_path).await?;
+    let tag_count = predictions.len();
+
+    // Emit progress: saving tags
+    app.emit(
+        "ai_tagging_progress",
+        ProgressEvent {
+            stage: "saving_tags".to_string(),
+            message: format!("Saving {} tags for {}...", tag_count, file_hash),
+            file_hash: None,
+        },
+    )
+    .ok();
 
     // Insert tags into database
+    let mut added_count = 0;
     for prediction in predictions {
         // Insert or get tag
         let tag = sqlx::query!(
@@ -166,8 +194,8 @@ async fn tag_file_automatically(
         .fetch_one(pool)
         .await?;
 
-        // Link to file (ignore if already exists)
-        sqlx::query!(
+        // Link to file (count only new associations)
+        let result = sqlx::query!(
             r#"
             INSERT OR IGNORE INTO FileTags (file_hash, tag_id)
             VALUES (?, ?)
@@ -177,9 +205,13 @@ async fn tag_file_automatically(
         )
         .execute(pool)
         .await?;
+
+        if result.rows_affected() > 0 {
+            added_count += 1;
+        }
     }
 
-    Ok(())
+    Ok(added_count)
 }
 
 // ============================================================================
@@ -191,6 +223,7 @@ pub async fn import_file(
     app: AppHandle,
     path: String,
     pool: tauri::State<'_, SqlitePool>,
+    tag_names: Option<Vec<String>>,
 ) -> Result<ImportResult, AppError> {
     eprintln!("=== Starting import for: {} ===", path);
     let file_path = PathBuf::from(&path);
@@ -201,6 +234,7 @@ pub async fn import_file(
         ProgressEvent {
             stage: "hashing".to_string(),
             message: "Calculating file hash...".to_string(),
+            file_hash: None,
         },
     )
     .ok();
@@ -230,28 +264,11 @@ pub async fn import_file(
         });
     }
 
-    // Emit progress: thumbnail
-    app.emit(
-        "import_progress",
-        ProgressEvent {
-            stage: "thumbnail".to_string(),
-            message: "Generating thumbnail...".to_string(),
-        },
-    )
-    .ok();
-
     // Get image dimensions
     eprintln!("Getting image dimensions...");
     let (width, height) = image::image_dimensions(&file_path)
         .map_err(|e| AppError::Custom(format!("Failed to get image dimensions: {}", e)))?;
     eprintln!("Dimensions: {}x{}", width, height);
-
-    // Generate thumbnail
-    eprintln!("Generating thumbnail...");
-    let thumbnail_dir = get_thumbnail_dir(&app)?;
-    let thumbnail_path = thumbnail_dir.join(format!("{}.webp", file_hash));
-    generate_thumbnail(&file_path, &thumbnail_path, 400)?;
-    eprintln!("Thumbnail generated: {:?}", thumbnail_path);
 
     // Get file modified time (Unix timestamp)
     let file_last_modified = metadata
@@ -272,11 +289,12 @@ pub async fn import_file(
         ProgressEvent {
             stage: "saving".to_string(),
             message: "Saving to database...".to_string(),
+            file_hash: None,
         },
     )
     .ok();
 
-    // Insert into database
+    // Insert into database BEFORE thumbnail generation
     eprintln!("Inserting into database...");
     sqlx::query!(
         r#"
@@ -295,17 +313,108 @@ pub async fn import_file(
     .await?;
     eprintln!("Database insert complete");
 
-    // Emit progress: AI tagging
-    app.emit(
-        "import_progress",
-        ProgressEvent {
-            stage: "ai".to_string(),
-            message: "Running AI tagging...".to_string(),
-        },
-    )
-    .ok();
+    // Apply tags if provided during import
+    if let Some(tags) = tag_names {
+        eprintln!("Applying {} tags during import...", tags.len());
+        for tag_name in tags {
+            // Create or get tag
+            let tag = sqlx::query!(
+                r#"
+                INSERT INTO Tags (name, type)
+                VALUES (?, 'general')
+                ON CONFLICT(name) DO UPDATE SET name=name
+                RETURNING tag_id
+                "#,
+                tag_name
+            )
+            .fetch_one(pool.inner())
+            .await?;
 
-    // Trigger AI tagging in background task
+            // Associate tag with file
+            sqlx::query!(
+                r#"
+                INSERT OR IGNORE INTO FileTags (file_hash, tag_id)
+                VALUES (?, ?)
+                "#,
+                file_hash,
+                tag.tag_id
+            )
+            .execute(pool.inner())
+            .await?;
+        }
+        eprintln!("Tags applied during import");
+    }
+
+    // Generate thumbnail in background thread after DB insert
+    eprintln!("Spawning thumbnail generation task...");
+    let app_thumbnail = app.clone();
+    let file_path_thumbnail = file_path.clone();
+    let file_hash_thumbnail = file_hash.clone();
+    let thumbnail_dir = get_thumbnail_dir(&app)?;
+
+    tokio::spawn(async move {
+        // Emit progress: thumbnail generating
+        app_thumbnail
+            .emit(
+                "thumbnail_progress",
+                ProgressEvent {
+                    stage: "generating".to_string(),
+                    message: format!("Generating thumbnail for {}...", file_hash_thumbnail),
+                    file_hash: Some(file_hash_thumbnail.clone()),
+                },
+            )
+            .ok();
+
+        let thumbnail_path = thumbnail_dir.join(format!("{}.webp", file_hash_thumbnail));
+        let result = tokio::task::spawn_blocking(move || {
+            generate_thumbnail(&file_path_thumbnail, &thumbnail_path, 400)
+        })
+        .await;
+
+        match result {
+            Ok(Ok(path)) => {
+                eprintln!("Thumbnail generated: {:?}", path);
+                app_thumbnail
+                    .emit(
+                        "thumbnail_progress",
+                        ProgressEvent {
+                            stage: "complete".to_string(),
+                            message: format!("Thumbnail complete for {}", file_hash_thumbnail),
+                            file_hash: Some(file_hash_thumbnail.clone()),
+                        },
+                    )
+                    .ok();
+            }
+            Ok(Err(e)) => {
+                eprintln!("Thumbnail generation failed: {}", e);
+                app_thumbnail
+                    .emit(
+                        "thumbnail_progress",
+                        ProgressEvent {
+                            stage: "error".to_string(),
+                            file_hash: None,
+                            message: format!("Thumbnail failed for {}: {}", file_hash_thumbnail, e),
+                        },
+                    )
+                    .ok();
+            }
+            Err(e) => {
+                eprintln!("Thumbnail task panicked: {}", e);
+                app_thumbnail
+                    .emit(
+                        "thumbnail_progress",
+                        ProgressEvent {
+                            stage: "error".to_string(),
+                            file_hash: None,
+                            message: format!("Thumbnail task failed for {}", file_hash_thumbnail),
+                        },
+                    )
+                    .ok();
+            }
+        }
+    });
+
+    // Trigger AI tagging in background task (separate from import)
     eprintln!("Starting background AI tagging...");
     let app_handle = app.clone();
     let file_hash_clone = file_hash.clone();
@@ -314,17 +423,48 @@ pub async fn import_file(
 
     tokio::spawn(async move {
         eprintln!("AI tagging task started for {}", file_hash_clone);
-        if let Err(e) =
-            tag_file_automatically(&app_handle, &pool_clone, &file_hash_clone, &file_path_clone)
-                .await
+        match tag_file_automatically(&app_handle, &pool_clone, &file_hash_clone, &file_path_clone)
+            .await
         {
-            eprintln!("AI tagging failed for {}: {}", file_hash_clone, e);
-        } else {
-            eprintln!("AI tagging completed for {}", file_hash_clone);
+            Ok(tag_count) => {
+                eprintln!(
+                    "AI tagging completed for {}: {} tags added",
+                    file_hash_clone, tag_count
+                );
+                // Emit complete event
+                app_handle
+                    .emit(
+                        "ai_tagging_progress",
+                        ProgressEvent {
+                            stage: "complete".to_string(),
+                            message: format!("AI tagging complete: {} tags added", tag_count),
+                            file_hash: None,
+                        },
+                    )
+                    .ok();
+            }
+            Err(e) => {
+                eprintln!("AI tagging failed for {}: {}", file_hash_clone, e);
+                // Emit error event
+                app_handle
+                    .emit(
+                        "ai_tagging_progress",
+                        ProgressEvent {
+                            stage: "error".to_string(),
+                            message: format!("AI tagging error: {}", e),
+                            file_hash: None,
+                        },
+                    )
+                    .ok();
+            }
         }
     });
 
-    eprintln!("=== Import complete for: {} ===", file_hash);
+    // Import is complete - return immediately without waiting for AI tagging
+    eprintln!(
+        "=== Import complete for: {} (AI tagging in progress) ===",
+        file_hash
+    );
     Ok(ImportResult {
         file_hash,
         is_duplicate: false,
@@ -443,11 +583,8 @@ pub async fn search_files_by_tags(
 
 /// Get the thumbnail URL for a given file hash
 #[tauri::command]
-pub fn get_thumbnail_url(app: AppHandle, file_hash: String) -> Result<String, AppError> {
-    let thumbnail_dir = get_thumbnail_dir(&app)?;
-    let thumbnail_path = thumbnail_dir.join(format!("{}.webp", file_hash));
-
-    // Convert absolute path to asset URL
+pub fn get_thumbnail_url(_app: AppHandle, file_hash: String) -> Result<String, AppError> {
+    // Convert to asset URL (thumbnail directory is handled by the asset protocol)
     let url = format!("app-asset://localhost/thumbnails/{}.webp", file_hash);
 
     Ok(url)
@@ -480,6 +617,7 @@ pub async fn regenerate_missing_thumbnails(
 
     let mut missing_count = 0;
     let mut regenerated_count = 0;
+    let mut tasks = Vec::new();
 
     for file in files {
         let thumbnail_path = thumbnail_dir.join(format!("{}.webp", file.file_hash));
@@ -495,17 +633,28 @@ pub async fn regenerate_missing_thumbnails(
             // Check if original file still exists
             let original_path = PathBuf::from(&file.original_path);
             if original_path.exists() {
-                // Regenerate thumbnail
-                eprintln!("  Regenerating thumbnail...");
-                match generate_thumbnail(&original_path, &thumbnail_path, 400) {
-                    Ok(_) => {
-                        eprintln!("  ✓ Thumbnail regenerated successfully");
-                        regenerated_count += 1;
+                // Spawn thumbnail generation task in thread pool
+                eprintln!("  Spawning thumbnail regeneration task...");
+                let file_hash_clone = file.file_hash.clone();
+                let task = tokio::task::spawn_blocking(move || {
+                    match generate_thumbnail(&original_path, &thumbnail_path, 400) {
+                        Ok(_) => {
+                            eprintln!(
+                                "  ✓ Thumbnail regenerated successfully for {}",
+                                file_hash_clone
+                            );
+                            Ok(())
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "  ✗ Failed to regenerate thumbnail for {}: {}",
+                                file_hash_clone, e
+                            );
+                            Err(e)
+                        }
                     }
-                    Err(e) => {
-                        eprintln!("  ✗ Failed to regenerate thumbnail: {}", e);
-                    }
-                }
+                });
+                tasks.push((task, file.file_hash.clone()));
             } else {
                 eprintln!("  ✗ Original file not found, marking as missing");
                 // Mark file as missing in database
@@ -515,6 +664,22 @@ pub async fn regenerate_missing_thumbnails(
                 )
                 .execute(pool)
                 .await?;
+            }
+        }
+    }
+
+    // Wait for all thumbnail generation tasks to complete
+    eprintln!("Waiting for {} thumbnail generation tasks...", tasks.len());
+    for (task, file_hash) in tasks {
+        match task.await {
+            Ok(Ok(_)) => {
+                regenerated_count += 1;
+            }
+            Ok(Err(e)) => {
+                eprintln!("Thumbnail generation failed for {}: {}", file_hash, e);
+            }
+            Err(e) => {
+                eprintln!("Thumbnail task panicked for {}: {}", file_hash, e);
             }
         }
     }
@@ -531,4 +696,150 @@ pub async fn regenerate_missing_thumbnails(
     }
 
     Ok(())
+}
+
+/// Manually run AI tagging on a single file
+#[tauri::command]
+pub async fn tag_file_with_ai(
+    app: AppHandle,
+    pool: tauri::State<'_, SqlitePool>,
+    file_hash: String,
+) -> Result<usize, AppError> {
+    // Get file info from database
+    let file = sqlx::query_as!(
+        FileRecord,
+        "SELECT * FROM Files WHERE file_hash = ?",
+        file_hash
+    )
+    .fetch_optional(pool.inner())
+    .await?
+    .ok_or_else(|| AppError::Custom(format!("File not found: {}", file_hash)))?;
+
+    let file_path = PathBuf::from(&file.original_path);
+    if !file_path.exists() {
+        return Err(AppError::Custom(format!(
+            "Original file not found: {}",
+            file.original_path
+        )));
+    }
+
+    // Run AI tagging
+    let tag_count = tag_file_automatically(&app, pool.inner(), &file_hash, &file_path).await?;
+
+    // Emit complete event
+    app.emit(
+        "ai_tagging_progress",
+        ProgressEvent {
+            stage: "complete".to_string(),
+            message: format!(
+                "AI tagging complete for {}: {} tags added",
+                file_hash, tag_count
+            ),
+            file_hash: None,
+        },
+    )
+    .ok();
+
+    Ok(tag_count)
+}
+
+/// Manually run AI tagging on multiple files in batch
+#[tauri::command]
+pub async fn tag_files_batch(
+    app: AppHandle,
+    pool: tauri::State<'_, SqlitePool>,
+    file_hashes: Vec<String>,
+) -> Result<usize, AppError> {
+    let mut total_tags = 0;
+    let mut processed = 0;
+    let total = file_hashes.len();
+
+    for file_hash in file_hashes {
+        // Get file info from database
+        let file_result = sqlx::query_as!(
+            FileRecord,
+            "SELECT * FROM Files WHERE file_hash = ?",
+            file_hash
+        )
+        .fetch_optional(pool.inner())
+        .await?;
+
+        if let Some(file) = file_result {
+            let file_path = PathBuf::from(&file.original_path);
+            if file_path.exists() {
+                // Run AI tagging
+                match tag_file_automatically(&app, pool.inner(), &file_hash, &file_path).await {
+                    Ok(tag_count) => {
+                        total_tags += tag_count;
+                        processed += 1;
+
+                        // Emit progress for this file
+                        app.emit(
+                            "ai_tagging_progress",
+                            ProgressEvent {
+                                stage: "complete".to_string(),
+                                message: format!(
+                                    "AI tagging complete for {} ({}/{}): {} tags added",
+                                    file_hash, processed, total, tag_count
+                                ),
+                                file_hash: None,
+                            },
+                        )
+                        .ok();
+                    }
+                    Err(e) => {
+                        eprintln!("AI tagging failed for {}: {}", file_hash, e);
+                        // Emit error but continue with other files
+                        app.emit(
+                            "ai_tagging_progress",
+                            ProgressEvent {
+                                stage: "error".to_string(),
+                                message: format!("AI tagging error for {}: {}", file_hash, e),
+                                file_hash: None,
+                            },
+                        )
+                        .ok();
+                    }
+                }
+            } else {
+                // Emit skipped event
+                app.emit(
+                    "ai_tagging_progress",
+                    ProgressEvent {
+                        stage: "skipped".to_string(),
+                        message: format!("Skipped {}: original file not found", file_hash),
+                        file_hash: None,
+                    },
+                )
+                .ok();
+            }
+        } else {
+            // Emit skipped event
+            app.emit(
+                "ai_tagging_progress",
+                ProgressEvent {
+                    stage: "skipped".to_string(),
+                    message: format!("Skipped {}: not found in database", file_hash),
+                    file_hash: None,
+                },
+            )
+            .ok();
+        }
+    }
+
+    // Emit final complete event
+    app.emit(
+        "ai_tagging_progress",
+        ProgressEvent {
+            stage: "batch_complete".to_string(),
+            message: format!(
+                "Batch AI tagging complete: {} files processed, {} total tags added",
+                processed, total_tags
+            ),
+            file_hash: None,
+        },
+    )
+    .ok();
+
+    Ok(total_tags)
 }

@@ -24,6 +24,18 @@ export interface ImportResult {
 }
 
 export interface ProgressEvent {
-  stage: "hashing" | "thumbnail" | "ai" | "saving";
+  stage: string;
   message: string;
+  file_hash?: string; // Optional file hash for per-file progress tracking
 }
+
+// Specific progress event types for better type checking
+export type ImportProgressStage = "hashing" | "saving";
+export type ThumbnailProgressStage = "generating" | "complete" | "error";
+export type AITaggingProgressStage =
+  | "classifying"
+  | "saving_tags"
+  | "complete"
+  | "error"
+  | "skipped"
+  | "batch_complete";

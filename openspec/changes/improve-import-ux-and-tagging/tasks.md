@@ -1,70 +1,70 @@
 # Implementation Tasks
 
 ## 1. Backend: Multi-threaded Thumbnail Generation
-- [ ] 1.1 Refactor `generate_thumbnail()` to return `Result<PathBuf, AppError>` instead of `Result<(), AppError>`
-- [ ] 1.2 Wrap `generate_thumbnail()` call in `tokio::task::spawn_blocking` within `import_file()`
-- [ ] 1.3 Move thumbnail generation after database insert (currently before)
-- [ ] 1.4 Add `thumbnail_progress` event emissions (generating, complete, error)
-- [ ] 1.5 Update `regenerate_missing_thumbnails()` to use thread pool for parallel generation
+- [x] 1.1 Refactor `generate_thumbnail()` to return `Result<PathBuf, AppError>` instead of `Result<(), AppError>`
+- [x] 1.2 Wrap `generate_thumbnail()` call in `tokio::task::spawn_blocking` within `import_file()`
+- [x] 1.3 Move thumbnail generation after database insert (currently before)
+- [x] 1.4 Add `thumbnail_progress` event emissions (generating, complete, error)
+- [x] 1.5 Update `regenerate_missing_thumbnails()` to use thread pool for parallel generation
 - [ ] 1.6 Test concurrent thumbnail generation with batch import (10+ files)
 
 ## 2. Backend: Complete AI Tagger Implementation
-- [ ] 2.1 Implement CSV label map loading from `models/selected_tags.csv`
-- [ ] 2.2 Parse CSV with columns: tag_id, name, category, post_count
-- [ ] 2.3 Cache label map in static `Lazy<HashMap<usize, String>>`
-- [ ] 2.4 Implement image preprocessing: resize to 224x224, normalize to [0.0, 1.0], RGB format
-- [ ] 2.5 Implement ONNX model loading from `models/swin-v2-tagger-v3.onnx` with lazy initialization
-- [ ] 2.6 Implement inference execution using loaded model session
-- [ ] 2.7 Implement postprocessing: filter by threshold (0.35), exclude 'meta' tags, top 50 tags
-- [ ] 2.8 Replace stub `classify_image()` with full implementation returning real predictions
-- [ ] 2.9 Implement `is_model_available()` to check if model and CSV files exist
-- [ ] 2.10 Add error handling for missing model files with clear instructions
+- [x] 2.1 Implement CSV label map loading from `models/selected_tags.csv`
+- [x] 2.2 Parse CSV with columns: tag_id, name, category, post_count
+- [x] 2.3 Cache label map in static `Lazy<HashMap<usize, String>>`
+- [x] 2.4 Implement image preprocessing: resize to 448x448, normalize to [0.0, 1.0], RGB format
+- [x] 2.5 Implement ONNX model loading from `models/swin-v2-tagger-v3.onnx` with lazy initialization
+- [x] 2.6 Implement inference execution using loaded model session
+- [x] 2.7 Implement postprocessing: filter by threshold (0.35), exclude 'meta' tags, top 50 tags
+- [x] 2.8 Replace stub `classify_image()` with full implementation returning real predictions
+- [x] 2.9 Implement `is_model_available()` to check if model and CSV files exist
+- [x] 2.10 Add error handling for missing model files with clear instructions
 - [ ] 2.11 Test tagger with sample images and verify tag quality
 - [ ] 2.12 Test performance: measure inference time on CPU and GPU
 
 ## 2.5. Backend: Separate AI Tagging Progress
-- [ ] 2.5.1 Create new event type `ai_tagging_progress` distinct from `import_progress`
-- [ ] 2.5.2 Remove AI tagging stage from `import_progress` events
-- [ ] 2.5.3 Update `tag_file_automatically()` to emit `ai_tagging_progress` events:
+- [x] 2.5.1 Create new event type `ai_tagging_progress` distinct from `import_progress`
+- [x] 2.5.2 Remove AI tagging stage from `import_progress` events
+- [x] 2.5.3 Update `tag_file_automatically()` to emit `ai_tagging_progress` events:
   - Stage: "classifying" (before inference)
   - Stage: "saving_tags" (before database insert)
   - Stage: "complete" (with tag_count)
   - Stage: "error" (with message)
-- [ ] 2.5.4 Ensure `import_file()` returns immediately after file insert (before AI completes)
+- [x] 2.5.4 Ensure `import_file()` returns immediately after file insert (before AI completes)
 - [ ] 2.5.5 Test progress events with slow CPU inference (~1s per file)
 
 ## 2.6. Backend: Manual AI Tagging Commands
-- [ ] 2.6.1 Implement `tag_file_with_ai(file_hash)` Tauri command
-- [ ] 2.6.2 Implement `tag_files_batch(file_hashes[])` Tauri command for batch AI tagging
-- [ ] 2.6.3 Ensure commands emit `ai_tagging_progress` events with file_hash
-- [ ] 2.6.4 Handle missing files gracefully (emit "skipped" event, continue with others)
-- [ ] 2.6.5 Implement duplicate tag detection (INSERT OR IGNORE for existing tags)
-- [ ] 2.6.6 Return tag count showing only newly added tags (not duplicates)
+- [x] 2.6.1 Implement `tag_file_with_ai(file_hash)` Tauri command
+- [x] 2.6.2 Implement `tag_files_batch(file_hashes[])` Tauri command for batch AI tagging
+- [x] 2.6.3 Ensure commands emit `ai_tagging_progress` events with file_hash
+- [x] 2.6.4 Handle missing files gracefully (emit "skipped" event, continue with others)
+- [x] 2.6.5 Implement duplicate tag detection (INSERT OR IGNORE for existing tags)
+- [x] 2.6.6 Return tag count showing only newly added tags (not duplicates)
 - [ ] 2.6.7 Test batch AI tagging with 20+ files including some with existing tags
 
 ## 3. Backend: User Tag Management Commands
-- [ ] 3.1 Implement `add_tag_to_file(file_hash, tag_name, tag_type?)` Tauri command
-- [ ] 3.2 Implement `remove_tag_from_file(file_hash, tag_id)` Tauri command
-- [ ] 3.3 Implement `add_tags_to_files(file_hashes[], tag_names[], tag_type?)` batch command
-- [ ] 3.4 Implement `remove_tag_from_files(file_hashes[], tag_id)` batch command
-- [ ] 3.5 Implement `create_tag(name, type)` command with validation
-- [ ] 3.6 Implement `search_tags(prefix, limit?)` command with LIKE query and file counts
+- [x] 3.1 Implement `add_tag_to_file(file_hash, tag_name, tag_type?)` Tauri command
+- [x] 3.2 Implement `remove_tag_from_file(file_hash, tag_id)` Tauri command
+- [x] 3.3 Implement `add_tags_to_files(file_hashes[], tag_names[], tag_type?)` batch command
+- [x] 3.4 Implement `remove_tag_from_files(file_hashes[], tag_id)` batch command
+- [x] 3.5 Implement `create_tag(name, type)` command with validation
+- [x] 3.6 Implement `search_tags(prefix, limit?)` command with LIKE query and file counts
 - [ ] 3.7 Add unit tests for tag management commands (edge cases: duplicates, missing files)
 
 ## 4. Backend: Import-Time Tag Association
-- [ ] 4.1 Add optional `tag_names` parameter to `import_file()` command signature
-- [ ] 4.2 Implement tag lookup/creation and association logic after file insert
+- [x] 4.1 Add optional `tag_names` parameter to `import_file()` command signature
+- [x] 4.2 Implement tag lookup/creation and association logic after file insert
 - [ ] 4.3 Return applied tag_ids in ImportResult struct
-- [ ] 4.4 Update AI tagging to not conflict with user-applied tags (additive)
+- [x] 4.4 Update AI tagging to not conflict with user-applied tags (additive)
 - [ ] 4.5 Test import with tags on duplicate files (should skip but not error)
 
 ## 5. Frontend: Toast Notification System
-- [ ] 5.1 Install/create Toast component (consider using shadcn/ui toast or react-hot-toast)
-- [ ] 5.2 Create `useToast()` hook for programmatic toast invocation
-- [ ] 5.3 Add ToastProvider to App.tsx root
-- [ ] 5.4 Replace all `alert()` calls in ImportButton.tsx with toast notifications
+- [x] 5.1 Install/create Toast component (using react-hot-toast)
+- [x] 5.2 Create `useToast()` hook for programmatic toast invocation (using react-hot-toast API)
+- [x] 5.3 Add ToastProvider to App.tsx root
+- [x] 5.4 Replace all `alert()` calls in ImportButton.tsx with toast notifications
 - [ ] 5.5 Add "View Details" link in toasts that opens notification center
-- [ ] 5.6 Style toasts to match application theme (dark mode support)
+- [x] 5.6 Style toasts to match application theme (dark mode support)
 - [ ] 5.7 Test toast stacking with multiple simultaneous notifications
 
 ## 5.5. Frontend: Persistent Notification Center
@@ -132,11 +132,11 @@
 - [ ] 9.7 Test import with tags on batch imports (20+ files)
 
 ## 10. Frontend: Progress Tracking Improvements
-- [ ] 10.1 Update progress state to track `import_progress`, `thumbnail_progress`, and `ai_tagging_progress` separately
-- [ ] 10.2 Create separate progress indicators for each stage in ImportButton
+- [x] 10.1 Update progress state to track `import_progress`, `thumbnail_progress`, and `ai_tagging_progress` separately
+- [x] 10.2 Create separate progress indicators for each stage in ImportButton
 - [ ] 10.3 Add per-file progress tracking for batch imports (show list of files with individual statuses)
-- [ ] 10.4 Listen for `thumbnail_progress` and `ai_tagging_progress` events
-- [ ] 10.5 Update progress display to show "Import complete, AI tagging in progress..." after import returns
+- [x] 10.4 Listen for `thumbnail_progress` and `ai_tagging_progress` events
+- [x] 10.5 Update progress display to show "Import complete, AI tagging in progress..." after import returns
 - [ ] 10.6 Test progress display with slow network/CPU conditions
 
 ## 11. Testing and Validation
