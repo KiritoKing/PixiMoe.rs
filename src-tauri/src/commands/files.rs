@@ -224,6 +224,7 @@ pub async fn import_file(
     path: String,
     pool: tauri::State<'_, SqlitePool>,
     tag_names: Option<Vec<String>>,
+    enable_ai_tagging: Option<bool>,
 ) -> Result<ImportResult, AppError> {
     eprintln!("=== Starting import for: {} ===", path);
     let file_path = PathBuf::from(&path);
@@ -414,51 +415,61 @@ pub async fn import_file(
         }
     });
 
-    // Trigger AI tagging in background task (separate from import)
-    eprintln!("Starting background AI tagging...");
-    let app_handle = app.clone();
-    let file_hash_clone = file_hash.clone();
-    let file_path_clone = file_path.clone();
-    let pool_clone = pool.inner().clone();
+    // Trigger AI tagging in background task (separate from import) if enabled
+    let should_tag = enable_ai_tagging.unwrap_or(true); // Default to true for backward compatibility
+    if should_tag {
+        eprintln!("Starting background AI tagging...");
+        let app_handle = app.clone();
+        let file_hash_clone = file_hash.clone();
+        let file_path_clone = file_path.clone();
+        let pool_clone = pool.inner().clone();
 
-    tokio::spawn(async move {
-        eprintln!("AI tagging task started for {}", file_hash_clone);
-        match tag_file_automatically(&app_handle, &pool_clone, &file_hash_clone, &file_path_clone)
+        tokio::spawn(async move {
+            eprintln!("AI tagging task started for {}", file_hash_clone);
+            match tag_file_automatically(
+                &app_handle,
+                &pool_clone,
+                &file_hash_clone,
+                &file_path_clone,
+            )
             .await
-        {
-            Ok(tag_count) => {
-                eprintln!(
-                    "AI tagging completed for {}: {} tags added",
-                    file_hash_clone, tag_count
-                );
-                // Emit complete event
-                app_handle
-                    .emit(
-                        "ai_tagging_progress",
-                        ProgressEvent {
-                            stage: "complete".to_string(),
-                            message: format!("AI tagging complete: {} tags added", tag_count),
-                            file_hash: None,
-                        },
-                    )
-                    .ok();
+            {
+                Ok(tag_count) => {
+                    eprintln!(
+                        "AI tagging completed for {}: {} tags added",
+                        file_hash_clone, tag_count
+                    );
+                    // Emit complete event
+                    app_handle
+                        .emit(
+                            "ai_tagging_progress",
+                            ProgressEvent {
+                                stage: "complete".to_string(),
+                                message: format!("AI tagging complete: {} tags added", tag_count),
+                                file_hash: None,
+                            },
+                        )
+                        .ok();
+                }
+                Err(e) => {
+                    eprintln!("AI tagging failed for {}: {}", file_hash_clone, e);
+                    // Emit error event
+                    app_handle
+                        .emit(
+                            "ai_tagging_progress",
+                            ProgressEvent {
+                                stage: "error".to_string(),
+                                message: format!("AI tagging error: {}", e),
+                                file_hash: None,
+                            },
+                        )
+                        .ok();
+                }
             }
-            Err(e) => {
-                eprintln!("AI tagging failed for {}: {}", file_hash_clone, e);
-                // Emit error event
-                app_handle
-                    .emit(
-                        "ai_tagging_progress",
-                        ProgressEvent {
-                            stage: "error".to_string(),
-                            message: format!("AI tagging error: {}", e),
-                            file_hash: None,
-                        },
-                    )
-                    .ok();
-            }
-        }
-    });
+        });
+    } else {
+        eprintln!("AI tagging disabled for {}", file_hash);
+    }
 
     // Import is complete - return immediately without waiting for AI tagging
     eprintln!(
@@ -530,22 +541,16 @@ pub async fn search_files_by_tags(
         return get_all_files(pool, None, None).await;
     }
 
-    // Build dynamic query for AND logic (files that have ALL specified tags)
-    let tag_count = tag_ids.len() as i64;
+    // Build dynamic query for OR logic (files that have ANY of the specified tags)
     let placeholders = tag_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
 
     let query = format!(
         r#"
-        SELECT f.file_hash, f.original_path, f.file_size_bytes, f.file_last_modified,
+        SELECT DISTINCT f.file_hash, f.original_path, f.file_size_bytes, f.file_last_modified,
                f.width, f.height, f.date_imported, f.is_missing
         FROM Files f
-        WHERE f.is_missing = 0 AND f.file_hash IN (
-            SELECT file_hash
-            FROM FileTags
-            WHERE tag_id IN ({})
-            GROUP BY file_hash
-            HAVING COUNT(DISTINCT tag_id) = ?
-        )
+        INNER JOIN FileTags ft ON f.file_hash = ft.file_hash
+        WHERE f.is_missing = 0 AND ft.tag_id IN ({})
         ORDER BY f.date_imported DESC
         "#,
         placeholders
@@ -557,9 +562,6 @@ pub async fn search_files_by_tags(
     for tag_id in &tag_ids {
         query_builder = query_builder.bind(tag_id);
     }
-
-    // Bind tag count for HAVING clause
-    query_builder = query_builder.bind(tag_count);
 
     let rows = query_builder.fetch_all(pool.inner()).await?;
 

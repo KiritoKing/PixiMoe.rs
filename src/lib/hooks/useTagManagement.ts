@@ -34,9 +34,12 @@ export function useAddTag() {
         tagType,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["tags"] });
+      queryClient.invalidateQueries({
+        queryKey: ["file-tags", variables.fileHash],
+      });
     },
   });
 }
@@ -58,9 +61,12 @@ export function useRemoveTag() {
         tagId,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["tags"] });
+      queryClient.invalidateQueries({
+        queryKey: ["file-tags", variables.fileHash],
+      });
     },
   });
 }
@@ -85,9 +91,13 @@ export function useBatchAddTags() {
         tagType,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["tags"] });
+      // Invalidate file-tags queries for all affected files
+      variables.fileHashes.forEach((fileHash) => {
+        queryClient.invalidateQueries({ queryKey: ["file-tags", fileHash] });
+      });
     },
   });
 }
@@ -109,9 +119,13 @@ export function useBatchRemoveTag() {
         tagId,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["tags"] });
+      // Invalidate file-tags queries for all affected files
+      variables.fileHashes.forEach((fileHash) => {
+        queryClient.invalidateQueries({ queryKey: ["file-tags", fileHash] });
+      });
     },
   });
 }
@@ -124,9 +138,10 @@ export function useRunAITagging() {
     mutationFn: async (fileHash: string) => {
       return invoke<number>("tag_file_with_ai", { fileHash });
     },
-    onSuccess: () => {
+    onSuccess: (_, fileHash) => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["tags"] });
+      queryClient.invalidateQueries({ queryKey: ["file-tags", fileHash] });
     },
   });
 }
@@ -139,9 +154,13 @@ export function useBatchAITagging() {
     mutationFn: async (fileHashes: string[]) => {
       return invoke<number>("tag_files_batch", { fileHashes });
     },
-    onSuccess: () => {
+    onSuccess: (_, fileHashes) => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["tags"] });
+      // Invalidate file-tags queries for all affected files
+      fileHashes.forEach((fileHash) => {
+        queryClient.invalidateQueries({ queryKey: ["file-tags", fileHash] });
+      });
     },
   });
 }

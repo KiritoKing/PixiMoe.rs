@@ -17,7 +17,15 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
 
+# Reference
+
+This is a tauri app project, whose frontend is built with vite.
+
+Dev command is `pnpm tauri dev`.
+
 More detail information like debugging for project reference to `@/openspec/projeect.md`.
+
+# Dev GuideLine
 
 ## shadcn/ui Usage Rules
 
@@ -25,7 +33,7 @@ More detail information like debugging for project reference to `@/openspec/proj
 
 1. **Search with shadcn MCP** → Find component name
 2. **Query API with Context7 MCP** → Get current props/variants
-3. **Install if needed** → `pnpm dlx shadcn@latest add <component>`
+3. **Install if needed (use Non-interactive mode)** → `echo "N" | pnpm dlx shadcn@latest add <component> --yes`
 4. **Import directly** → `import { Button } from "@/components/ui/button"`
 
 **Common components:** Button, Card, Dialog, Input, Badge, Popover, Progress, ScrollArea, Skeleton

@@ -17,4 +17,4 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
 
-@AGENTS.md
+@AGENTS.md; Refer to ./AGENTS.md for more details of this project.

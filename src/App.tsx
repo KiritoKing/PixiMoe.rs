@@ -6,6 +6,7 @@ import { ImageGrid } from "./components/gallery/ImageGrid";
 import { TagFilterPanel } from "./components/tags/TagFilterPanel";
 import { ImportButton } from "./components/import/ImportButton";
 import { ThemeToggle } from "./components/theme-toggle";
+import { NotificationCenter } from "./components/notifications/NotificationCenter";
 import { useFiles, useSearchFiles } from "./lib/hooks";
 import "./App.css";
 
@@ -52,6 +53,11 @@ function App() {
           },
           error: {
             duration: 5000,
+            style: {
+              background: "hsl(var(--background))",
+              color: "hsl(var(--foreground))",
+              border: "1px solid hsl(var(--border))",
+            },
           },
         }}
       />
@@ -61,6 +67,7 @@ function App() {
           <h1 className="text-2xl font-bold">AI Image Gallery</h1>
           <div className="flex items-center gap-4">
             <ThemeToggle />
+            <NotificationCenter />
             <ImportButton />
           </div>
         </div>
