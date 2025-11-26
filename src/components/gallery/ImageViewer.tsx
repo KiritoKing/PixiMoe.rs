@@ -53,22 +53,14 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
       return 1;
     }
     
-    // Calculate scale to fit width (with 95% padding to ensure it fits)
-    const widthScale = (containerWidth * 0.95) / imgWidth;
-    // Calculate scale to fit height (with 95% padding)
-    const heightScale = (containerHeight * 0.95) / imgHeight;
-    
-    // Prioritize width fitting, but ensure it doesn't exceed height
-    // Use the smaller scale to ensure image fits within container
-    const scale = Math.min(widthScale, heightScale);
+    // Calculate scale to fill width (use 95% of container width to leave small margin)
+    // Prioritize width - let image fill width, even if height slightly exceeds
+    // This makes images much more visible and easier to view
+    const scale = (containerWidth * 0.95) / imgWidth;
+    console.log('scale', scale);
     return Math.max(scale, 0.1); // Minimum scale of 0.1
   }, []);
 
-
-  // Calculate initial scale based on image dimensions
-  const initialScale = imageDimensions 
-    ? calculateInitialScale(imageDimensions.width, imageDimensions.height)
-    : 1;
 
   useEffect(() => {
     // Use app-asset:// protocol to load original image
@@ -78,24 +70,40 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
     setImageDimensions(null);
   }, [file.file_hash]);
 
-  // Apply initial scale and center after image dimensions are set
+  // Apply initial scale after image dimensions are set and container is ready
   useEffect(() => {
     if (imageDimensions && transformRef.current && imageContainerRef.current && !imageLoading) {
-      const scale = calculateInitialScale(imageDimensions.width, imageDimensions.height);
-      // Use a longer timeout to ensure the component is fully initialized
-      setTimeout(() => {
-        if (transformRef.current) {
-          // Reset to center first
-          transformRef.current.resetTransform();
-          // Then apply scale after reset completes
-          setTimeout(() => {
-            if (transformRef.current) {
-              const state = transformRef.current.state;
-              transformRef.current.setTransform(state.positionX, state.positionY, scale);
-            }
-          }, 150);
+      // Wait for container to have proper dimensions
+      const applyScale = () => {
+        if (!transformRef.current || !imageContainerRef.current) return;
+        
+        const containerWidth = imageContainerRef.current.clientWidth;
+        const containerHeight = imageContainerRef.current.clientHeight;
+        
+        if (containerWidth === 0 || containerHeight === 0) {
+          // Retry if container not ready
+          setTimeout(applyScale, 100);
+          return;
         }
-      }, 300);
+        
+        const scale = calculateInitialScale(imageDimensions.width, imageDimensions.height);
+        console.log('Applying scale:', scale, 'for image:', imageDimensions.width, 'x', imageDimensions.height, 'container:', containerWidth, 'x', containerHeight);
+        
+        // Reset transform first to ensure clean state
+        transformRef.current.resetTransform();
+        
+        // Then apply the calculated scale after reset completes
+        setTimeout(() => {
+          if (transformRef.current) {
+            const state = transformRef.current.state;
+            // Set transform with calculated scale, keeping centered position
+            transformRef.current.setTransform(state.positionX, state.positionY, scale);
+          }
+        }, 100);
+      };
+      
+      // Small delay to ensure DOM is ready
+      setTimeout(applyScale, 200);
     }
   }, [imageDimensions, imageLoading, calculateInitialScale]);
 
@@ -205,7 +213,7 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
               <TransformWrapper
                 key={`${file.file_hash}-${imageDimensions ? 'loaded' : 'loading'}`}
                 ref={transformRef}
-                initialScale={initialScale}
+                initialScale={1}
                 minScale={0.1}
                 maxScale={5}
                 centerOnInit={true}

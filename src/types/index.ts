@@ -27,6 +27,8 @@ export interface ProgressEvent {
   stage: string;
   message: string;
   file_hash?: string; // Optional file hash for per-file progress tracking
+  current?: number; // Current progress (n)
+  total?: number; // Total count (m)
 }
 
 // Specific progress event types for better type checking

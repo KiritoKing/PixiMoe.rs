@@ -35,9 +35,9 @@ export function TagInput({ value, onChange, placeholder = "Add tags..." }: TagIn
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (input.trim()) {
-        handleAddTag(input);
-      }
+        if (input.trim()) {
+          handleAddTag(input);
+        }
     } else if (e.key === "Backspace" && !input && value.length > 0) {
       // Remove last tag on backspace when input is empty
       onChange(value.slice(0, -1));
@@ -68,7 +68,12 @@ export function TagInput({ value, onChange, placeholder = "Add tags..." }: TagIn
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => input && setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+          onBlur={() => {
+            setTimeout(() => setShowSuggestions(false), 200)
+            if (input.trim()) {
+              handleAddTag(input);
+            }
+          }}
           placeholder={value.length === 0 ? placeholder : ""}
           className="flex-1 min-w-[120px] outline-none bg-transparent text-sm"
         />

@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { TagInput } from "@/components/tags/TagInput";
 
@@ -27,9 +27,10 @@ export function ImportDialog({
   fileCount,
 }: ImportDialogProps) {
   const [tagNames, setTagNames] = useState<string[]>([]);
-  const [enableAITagging, setEnableAITagging] = useState(true);
+  const [enableAITagging, setEnableAITagging] = useState(false);
 
   const handleConfirm = () => {
+    console.log("[ImportDialog] Confirming with tagNames:", tagNames, "enableAITagging:", enableAITagging);
     onConfirm({ tagNames, enableAITagging });
     // Reset form
     setTagNames([]);
@@ -64,21 +65,27 @@ export function ImportDialog({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* AI Tagging Switch */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="ai-tagging" className="text-base font-medium">
-                启用 AI 标签
+          {/* AI Tagging Checkbox */}
+          <div className="flex items-start space-x-3">
+            <Checkbox
+              id="ai-tagging"
+              checked={enableAITagging}
+              onCheckedChange={(checked) => {
+                // Handle boolean and "indeterminate" cases
+                const newValue = checked === true;
+                console.log("[ImportDialog] Checkbox changed:", checked, "->", newValue);
+                setEnableAITagging(newValue);
+              }}
+              className="mt-1"
+            />
+            <div className="space-y-0.5 flex-1">
+              <Label htmlFor="ai-tagging" className="text-base font-medium cursor-pointer">
+                启用 AI 标签（实验性）
               </Label>
               <p className="text-sm text-muted-foreground">
                 自动为导入的图片生成 AI 标签（可能需要一些时间）
               </p>
             </div>
-            <Switch
-              id="ai-tagging"
-              checked={enableAITagging}
-              onCheckedChange={setEnableAITagging}
-            />
           </div>
 
           {/* Manual Tag Input */}

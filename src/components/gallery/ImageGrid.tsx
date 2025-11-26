@@ -33,6 +33,8 @@ function getColumnCount(width: number, minItemSize: number = 120, gap: number = 
   return Math.max(2, Math.min(maxColumns, 10));
 }
 
+type ThumbnailSize = "small" | "medium" | "large";
+
 export function ImageGrid({ files: customFiles, isLoading: customLoading }: ImageGridProps) {
   const { data: fetchedFiles, isLoading: fetchLoading } = useFiles();
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
@@ -43,6 +45,7 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
   const [thumbnailTimestamps, setThumbnailTimestamps] = useState<Map<string, number>>(new Map());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [thumbnailSize, setThumbnailSize] = useState<ThumbnailSize>("small");
   
   const files = customFiles ?? fetchedFiles ?? [];
   const isLoading = customLoading ?? fetchLoading;
@@ -56,7 +59,20 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
   // Constants for layout calculation
   const gap = 16; // gap-4 = 16px
   const padding = 16; // p-4 = 16px
-  const minItemSize = 120; // Minimum item size in pixels
+  // Dynamic minItemSize based on thumbnail size selection
+  // Use more distinct values to ensure visible differences
+  const minItemSize = useMemo(() => {
+    switch (thumbnailSize) {
+      case "small":
+        return 100;
+      case "medium":
+        return 160;
+      case "large":
+        return 240;
+      default:
+        return 100;
+    }
+  }, [thumbnailSize]);
   
   // Calculate column count based on container width
   // Use dynamic calculation with actual gap and padding values
@@ -188,6 +204,13 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
     // Formula: (availableWidth - gaps) / columns
     // gaps = gap * (columnCount - 1)
     const calculatedSize = Math.floor((availableWidth - gap * (columnCount - 1)) / columnCount);
+    // Use minItemSize as target size, but allow slight adjustment if needed
+    // This ensures visible differences between size options
+    // If calculated size is close to minItemSize (within 20px), use minItemSize
+    // Otherwise, use calculated size but ensure it's at least minItemSize
+    if (Math.abs(calculatedSize - minItemSize) < 20) {
+      return minItemSize;
+    }
     // Ensure minimum size
     return Math.max(calculatedSize, minItemSize);
   }, [columnCount, containerWidth, availableWidth, gap, padding, minItemSize]);
@@ -348,9 +371,41 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
 
   return (
     <div ref={widthMeasureCallbackRef} className="h-full w-full flex flex-col">
-      {/* Refresh button - shown when there are files */}
+      {/* Toolbar - shown when there are files */}
       {files.length > 0 && (
-        <div className="flex justify-end px-4 pt-4 pb-2 shrink-0">
+        <div className="flex justify-between items-center px-4 pt-4 pb-2 shrink-0">
+          {/* Thumbnail size selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">缩略图大小:</span>
+            <div className="flex gap-1 border rounded-md p-1">
+              <Button
+                variant={thumbnailSize === "small" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setThumbnailSize("small")}
+                className="h-7 px-3"
+              >
+                小
+              </Button>
+              <Button
+                variant={thumbnailSize === "medium" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setThumbnailSize("medium")}
+                className="h-7 px-3"
+              >
+                中
+              </Button>
+              <Button
+                variant={thumbnailSize === "large" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setThumbnailSize("large")}
+                className="h-7 px-3"
+              >
+                大
+              </Button>
+            </div>
+          </div>
+          
+          {/* Refresh button */}
           <Button
             variant="outline"
             size="sm"

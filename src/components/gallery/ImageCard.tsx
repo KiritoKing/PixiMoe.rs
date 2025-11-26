@@ -12,14 +12,19 @@ interface ImageCardProps {
   onClick: (e: React.MouseEvent) => void;
 }
 
-export function ImageCard({ file, isSelected, isLoadingThumbnail, thumbnailTimestamp, onClick }: ImageCardProps) {
+export function ImageCard({ file, isSelected, isLoadingThumbnail: _isLoadingThumbnail, thumbnailTimestamp, onClick }: ImageCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
+  const [useOriginal, setUseOriginal] = useState(false);
   
   // Use direct app-asset:// protocol URL with cache-busting timestamp
   const thumbnailUrl = `app-asset://localhost/thumbnails/${file.file_hash}.webp${thumbnailTimestamp ? `?t=${thumbnailTimestamp}` : ''}`;
+  const originalUrl = `app-asset://localhost/originals/${file.file_hash}`;
   const fileName = file.original_path.split("/").pop() || file.original_path;
+  
+  // Determine which image URL to use
+  const imageUrl = useOriginal ? originalUrl : thumbnailUrl;
 
   // Reset image state when thumbnail updates
   useEffect(() => {
@@ -28,19 +33,27 @@ export function ImageCard({ file, isSelected, isLoadingThumbnail, thumbnailTimes
       setImageLoaded(false);
       setImageError(false);
       setHasAttemptedLoad(false);
+      setUseOriginal(false); // Try thumbnail again when timestamp updates
     }
   }, [thumbnailTimestamp, file.file_hash]);
 
+  // Reset loading state when image URL changes (switching between thumbnail and original)
+  // This ensures smooth transition when falling back to original or when thumbnail becomes available
+  useEffect(() => {
+    setImageLoaded(false);
+    setImageError(false);
+    setHasAttemptedLoad(false);
+  }, [imageUrl]);
+
   // Determine if we should show loading or error
-  // Show loading when:
-  // 1. Backend is generating thumbnail (isLoadingThumbnail)
-  // 2. Image hasn't loaded yet and we haven't errored (initial state)
-  // 3. Image is actively loading (hasAttemptedLoad but not loaded/errored)
+  // Show loading only when:
+  // 1. Image is actively loading (hasAttemptedLoad but not loaded/errored)
+  // Do NOT show loading when backend is generating thumbnail (isLoadingThumbnail)
   // Show error only when:
   // 1. We've attempted to load and got an error
-  // 2. NOT currently regenerating (isLoadingThumbnail is false)
-  const showLoading = isLoadingThumbnail || (!imageLoaded && !imageError) || (!imageLoaded && hasAttemptedLoad && !imageError);
-  const showError = imageError && !isLoadingThumbnail && hasAttemptedLoad;
+  // 2. Both thumbnail and original failed to load
+  const showLoading = hasAttemptedLoad && !imageLoaded && !imageError;
+  const showError = imageError && hasAttemptedLoad && useOriginal; // Only show error if original also failed
 
   return (
     <Card 
@@ -73,7 +86,7 @@ export function ImageCard({ file, isSelected, isLoadingThumbnail, thumbnailTimes
       )}
       
       <img
-        src={thumbnailUrl}
+        src={imageUrl}
         alt={fileName}
         data-hash={file.file_hash}
         className="w-full h-full object-cover"
@@ -86,17 +99,27 @@ export function ImageCard({ file, isSelected, isLoadingThumbnail, thumbnailTimes
         }}
         loading="lazy"
         onLoadStart={() => {
-          console.log("Starting to load thumbnail:", thumbnailUrl);
+          console.log(`Starting to load ${useOriginal ? 'original' : 'thumbnail'}:`, imageUrl);
           setHasAttemptedLoad(true);
         }}
         onError={(e) => {
-          console.error("Failed to load thumbnail:", thumbnailUrl, e);
-          setImageError(true);
-          setImageLoaded(false);
-          setHasAttemptedLoad(true);
+          console.error(`Failed to load ${useOriginal ? 'original' : 'thumbnail'}:`, imageUrl, e);
+          if (!useOriginal) {
+            // Thumbnail failed, fallback to original
+            console.log("Falling back to original image");
+            setUseOriginal(true);
+            setImageLoaded(false);
+            setImageError(false);
+            setHasAttemptedLoad(false); // Reset to allow original to load
+          } else {
+            // Original also failed
+            setImageError(true);
+            setImageLoaded(false);
+            setHasAttemptedLoad(true);
+          }
         }}
         onLoad={() => {
-          console.log("Thumbnail loaded successfully:", thumbnailUrl);
+          console.log(`${useOriginal ? 'Original' : 'Thumbnail'} loaded successfully:`, imageUrl);
           setImageLoaded(true);
           setImageError(false);
           setHasAttemptedLoad(true);

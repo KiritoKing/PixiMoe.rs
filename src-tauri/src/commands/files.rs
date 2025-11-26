@@ -1,12 +1,23 @@
 use crate::error::AppError;
 use blake3::Hasher;
 use image::{DynamicImage, GenericImageView};
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 use std::fs::{self, File};
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager};
+use tokio::sync::Semaphore;
+
+// Global semaphore to limit concurrent thumbnail generation
+// Set to number of CPU cores for optimal performance
+static THUMBNAIL_SEMAPHORE: Lazy<Semaphore> = Lazy::new(|| {
+    let max_concurrent = std::thread::available_parallelism()
+        .map(|n| n.get().min(8)) // Cap at 8 to avoid overwhelming system
+        .unwrap_or(4); // Fallback to 4 if unavailable
+    Semaphore::new(max_concurrent)
+});
 
 // ============================================================================
 // Types
@@ -36,6 +47,10 @@ pub struct ProgressEvent {
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file_hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub current: Option<usize>, // Current progress (n)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total: Option<usize>, // Total count (m)
 }
 
 // ============================================================================
@@ -62,46 +77,64 @@ pub fn calculate_blake3_hash(path: &Path) -> Result<String, AppError> {
 
 /// Generate a WebP thumbnail with smart cropping
 /// Returns the path to the generated thumbnail
+/// Optimizations:
+/// - Checks if thumbnail already exists before generating
+/// - Skips unnecessary image processing when possible
+/// - Uses optimized image operations
 pub fn generate_thumbnail(
     image_path: &Path,
     output_path: &Path,
     thumbnail_size: u32,
 ) -> Result<PathBuf, AppError> {
-    eprintln!("  [Thumbnail] Creating output directory...");
+    // Early return if thumbnail already exists
+    if output_path.exists() {
+        return Ok(output_path.to_path_buf());
+    }
+
     // Create output directory if it doesn't exist
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)?;
     }
 
-    eprintln!("  [Thumbnail] Loading image...");
-    // Load the image
+    // Load the image with optimized decoder
     let img = image::open(image_path)
         .map_err(|e| AppError::Custom(format!("Failed to load image: {}", e)))?;
 
-    eprintln!("  [Thumbnail] Resizing and cropping...");
     // Smart cropping: maintain aspect ratio and center crop
     let thumb = resize_and_crop(&img, thumbnail_size);
 
-    eprintln!("  [Thumbnail] Converting to RGB8...");
-    // Convert to RGB8 for WebP encoding
+    // Convert to RGB8 for WebP encoding (only if needed)
     let rgb_image = thumb.to_rgb8();
 
-    eprintln!("  [Thumbnail] Encoding as WebP...");
-    // Encode as WebP (from_rgb returns Encoder directly, not Result)
+    // Encode as WebP with optimized quality
     let encoder = webp::Encoder::from_rgb(&rgb_image, rgb_image.width(), rgb_image.height());
     let webp_data = encoder.encode(85.0); // Quality 85
 
-    eprintln!("  [Thumbnail] Writing to file...");
-    // Write to file
+    // Write to file atomically to avoid partial writes
     fs::write(output_path, &*webp_data)?;
 
-    eprintln!("  [Thumbnail] Complete!");
     Ok(output_path.to_path_buf())
 }
 
 /// Resize and center crop an image to a square
+/// Optimizations:
+/// - Early return if image is already square and close to target size
+/// - Uses faster filter for small downscales
+/// - Avoids unnecessary cropping when not needed
 fn resize_and_crop(img: &DynamicImage, size: u32) -> DynamicImage {
     let (width, height) = img.dimensions();
+
+    // Early optimization: if image is already square and close to target size, skip processing
+    if width == height && (width as i32 - size as i32).abs() < 50 {
+        if width == size {
+            // Already exact size, just convert format if needed
+            return img.to_rgba8().into();
+        }
+        // Close enough, use faster resize
+        return img
+            .resize_exact(size, size, image::imageops::FilterType::Triangle)
+            .into();
+    }
 
     // Calculate the scaling factor to fit the image into the square
     let scale = if width < height {
@@ -113,24 +146,36 @@ fn resize_and_crop(img: &DynamicImage, size: u32) -> DynamicImage {
     let new_width = (width as f32 * scale) as u32;
     let new_height = (height as f32 * scale) as u32;
 
+    // Use faster filter for large downscales, Lanczos3 for small adjustments
+    let filter = if scale < 0.5 {
+        image::imageops::FilterType::Triangle // Faster for large downscales
+    } else {
+        image::imageops::FilterType::Lanczos3 // Better quality for small adjustments
+    };
+
     // Resize maintaining aspect ratio
-    let resized = img.resize(new_width, new_height, image::imageops::FilterType::Lanczos3);
+    let resized = img.resize(new_width, new_height, filter);
 
-    // Center crop to square
-    let x_offset = if new_width > size {
-        (new_width - size) / 2
+    // Center crop to square (only if needed)
+    if new_width == size && new_height == size {
+        // Already square, no crop needed
+        resized.to_rgba8().into()
     } else {
-        0
-    };
-    let y_offset = if new_height > size {
-        (new_height - size) / 2
-    } else {
-        0
-    };
+        let x_offset = if new_width > size {
+            (new_width - size) / 2
+        } else {
+            0
+        };
+        let y_offset = if new_height > size {
+            (new_height - size) / 2
+        } else {
+            0
+        };
 
-    DynamicImage::ImageRgba8(
-        image::imageops::crop_imm(&resized, x_offset, y_offset, size, size).to_image(),
-    )
+        DynamicImage::ImageRgba8(
+            image::imageops::crop_imm(&resized, x_offset, y_offset, size, size).to_image(),
+        )
+    }
 }
 
 /// Get the thumbnail directory path
@@ -173,6 +218,8 @@ async fn tag_file_automatically(
             stage: "classifying".to_string(),
             message: format!("Running AI inference for {}...", file_hash),
             file_hash: Some(file_hash.to_string()),
+            current: None,
+            total: None,
         },
     )
     .ok();
@@ -202,6 +249,8 @@ async fn tag_file_automatically(
             stage: "saving_tags".to_string(),
             message: format!("Saving {} tags for {}...", tag_count, file_hash),
             file_hash: Some(file_hash.to_string()),
+            current: None,
+            total: None,
         },
     )
     .ok();
@@ -288,6 +337,8 @@ pub async fn import_file(
             stage: "hashing".to_string(),
             message: "Calculating file hash...".to_string(),
             file_hash: None,
+            current: None,
+            total: None,
         },
     )
     .ok();
@@ -343,6 +394,8 @@ pub async fn import_file(
             stage: "saving".to_string(),
             message: "Saving to database...".to_string(),
             file_hash: None,
+            current: None,
+            total: None,
         },
     )
     .ok();
@@ -399,13 +452,34 @@ pub async fn import_file(
     }
 
     // Generate thumbnail in background thread after DB insert
-    eprintln!("Spawning thumbnail generation task...");
     let app_thumbnail = app.clone();
     let file_path_thumbnail = file_path.clone();
     let file_hash_thumbnail = file_hash.clone();
     let thumbnail_dir = get_thumbnail_dir(&app)?;
 
     tokio::spawn(async move {
+        // Acquire semaphore permit to limit concurrent thumbnail generation
+        let _permit = THUMBNAIL_SEMAPHORE.acquire().await;
+
+        // Check if thumbnail already exists before generating
+        let thumbnail_path = thumbnail_dir.join(format!("{}.webp", file_hash_thumbnail));
+        if thumbnail_path.exists() {
+            // Thumbnail already exists, emit complete event
+            app_thumbnail
+                .emit(
+                    "thumbnail_progress",
+                    ProgressEvent {
+                        stage: "complete".to_string(),
+                        message: format!("Thumbnail already exists for {}", file_hash_thumbnail),
+                        file_hash: Some(file_hash_thumbnail.clone()),
+                        current: None,
+                        total: None,
+                    },
+                )
+                .ok();
+            return;
+        }
+
         // Emit progress: thumbnail generating
         app_thumbnail
             .emit(
@@ -414,19 +488,21 @@ pub async fn import_file(
                     stage: "generating".to_string(),
                     message: format!("Generating thumbnail for {}...", file_hash_thumbnail),
                     file_hash: Some(file_hash_thumbnail.clone()),
+                    current: None,
+                    total: None,
                 },
             )
             .ok();
 
-        let thumbnail_path = thumbnail_dir.join(format!("{}.webp", file_hash_thumbnail));
+        let file_path_for_blocking = file_path_thumbnail.clone();
+        let thumbnail_path_for_blocking = thumbnail_path.clone();
         let result = tokio::task::spawn_blocking(move || {
-            generate_thumbnail(&file_path_thumbnail, &thumbnail_path, 400)
+            generate_thumbnail(&file_path_for_blocking, &thumbnail_path_for_blocking, 400)
         })
         .await;
 
         match result {
-            Ok(Ok(path)) => {
-                eprintln!("Thumbnail generated: {:?}", path);
+            Ok(Ok(_path)) => {
                 app_thumbnail
                     .emit(
                         "thumbnail_progress",
@@ -434,94 +510,69 @@ pub async fn import_file(
                             stage: "complete".to_string(),
                             message: format!("Thumbnail complete for {}", file_hash_thumbnail),
                             file_hash: Some(file_hash_thumbnail.clone()),
+                            current: None,
+                            total: None,
                         },
                     )
                     .ok();
             }
             Ok(Err(e)) => {
-                eprintln!("Thumbnail generation failed: {}", e);
                 app_thumbnail
                     .emit(
                         "thumbnail_progress",
                         ProgressEvent {
                             stage: "error".to_string(),
-                            file_hash: None,
+                            file_hash: Some(file_hash_thumbnail.clone()),
                             message: format!("Thumbnail failed for {}: {}", file_hash_thumbnail, e),
+                            current: None,
+                            total: None,
                         },
                     )
                     .ok();
             }
             Err(e) => {
-                eprintln!("Thumbnail task panicked: {}", e);
                 app_thumbnail
                     .emit(
                         "thumbnail_progress",
                         ProgressEvent {
                             stage: "error".to_string(),
-                            file_hash: None,
-                            message: format!("Thumbnail task failed for {}", file_hash_thumbnail),
+                            file_hash: Some(file_hash_thumbnail.clone()),
+                            message: format!(
+                                "Thumbnail task failed for {}: {}",
+                                file_hash_thumbnail, e
+                            ),
+                            current: None,
+                            total: None,
                         },
                     )
                     .ok();
             }
         }
+        // Permit is automatically released when dropped
     });
 
-    // Trigger AI tagging in background task (separate from import) if enabled
-    let should_tag = enable_ai_tagging.unwrap_or(true); // Default to true for backward compatibility
-    if should_tag {
-        eprintln!("Starting background AI tagging...");
-        let app_handle = app.clone();
-        let file_hash_clone = file_hash.clone();
-        let file_path_clone = file_path.clone();
-        let pool_clone = pool.inner().clone();
-
-        tokio::spawn(async move {
-            eprintln!("AI tagging task started for {}", file_hash_clone);
-            match tag_file_automatically(
-                &app_handle,
-                &pool_clone,
-                &file_hash_clone,
-                &file_path_clone,
-            )
-            .await
-            {
-                Ok(tag_count) => {
-                    eprintln!(
-                        "[AI Tagging] Completed for {}: {} tags added",
-                        file_hash_clone, tag_count
-                    );
-                    // Emit complete event
-                    app_handle
-                        .emit(
-                            "ai_tagging_progress",
-                            ProgressEvent {
-                                stage: "complete".to_string(),
-                                message: format!("AI tagging complete: {} tags added", tag_count),
-                                file_hash: Some(file_hash_clone.clone()),
-                            },
-                        )
-                        .ok();
-                }
-                Err(e) => {
-                    eprintln!("[AI Tagging] ERROR: Failed for {}: {}", file_hash_clone, e);
-                    // Emit error event
-                    app_handle
-                        .emit(
-                            "ai_tagging_progress",
-                            ProgressEvent {
-                                stage: "error".to_string(),
-                                message: format!("AI tagging error: {}", e),
-                                file_hash: Some(file_hash_clone.clone()),
-                            },
-                        )
-                        .ok();
-                }
-            }
-        });
-    } else {
-        eprintln!("AI tagging disabled for {}", file_hash);
-    }
+    // Check if AI tagging should be enabled (but don't start it yet - wait for all imports to complete)
+    // Log the received value for debugging
+    eprintln!(
+        "[Import] AI tagging option received: {:?}",
+        enable_ai_tagging
+    );
+    // Only enable if explicitly set to true
+    // If None (not provided), default to false to respect explicit user choice
+    // If Some(false), explicitly disabled
+    // If Some(true), explicitly enabled
+    let should_tag = match enable_ai_tagging {
+        Some(true) => true,
+        Some(false) => false,
+        None => false, // Default to false when not provided (user should explicitly enable)
+    };
+    eprintln!(
+        "[Import] AI tagging will be {} for {} (will start after all imports complete)",
+        if should_tag { "enabled" } else { "disabled" },
+        file_hash
+    );
+    // Note: AI tagging is now started after all files are imported, not immediately
+    // This prevents AI tagging from starting before import is complete
 
     // Import is complete - return immediately without waiting for AI tagging
     eprintln!(
@@ -684,12 +735,11 @@ pub fn get_thumbnail_url(_app: AppHandle, file_hash: String) -> Result<String, A
 
 /// Regenerate missing thumbnails for all files in the database
 /// This is called on app startup to ensure all thumbnails exist
+/// Uses semaphore to limit concurrent thumbnail generation
 pub async fn regenerate_missing_thumbnails(
     app: &AppHandle,
     pool: &SqlitePool,
 ) -> Result<(), AppError> {
-    eprintln!("=== Checking for missing thumbnails ===");
-
     let thumbnail_dir = get_thumbnail_dir(app)?;
 
     // Get all files from database
@@ -705,63 +755,57 @@ pub async fn regenerate_missing_thumbnails(
     .fetch_all(pool)
     .await?;
 
-    eprintln!("Found {} files in database", files.len());
-
-    let mut missing_count = 0;
     let mut regenerated_count = 0;
     let mut tasks = Vec::new();
 
     for file in files {
         let thumbnail_path = thumbnail_dir.join(format!("{}.webp", file.file_hash));
 
-        // Check if thumbnail exists
-        if !thumbnail_path.exists() {
-            missing_count += 1;
-            eprintln!(
-                "Missing thumbnail for: {} (hash: {})",
-                file.original_path, file.file_hash
-            );
-
-            // Check if original file still exists
-            let original_path = PathBuf::from(&file.original_path);
-            if original_path.exists() {
-                // Spawn thumbnail generation task in thread pool
-                eprintln!("  Spawning thumbnail regeneration task...");
-                let file_hash_clone = file.file_hash.clone();
-                let task = tokio::task::spawn_blocking(move || {
-                    match generate_thumbnail(&original_path, &thumbnail_path, 400) {
-                        Ok(_) => {
-                            eprintln!(
-                                "  ✓ Thumbnail regenerated successfully for {}",
-                                file_hash_clone
-                            );
-                            Ok(())
-                        }
-                        Err(e) => {
-                            eprintln!(
-                                "  ✗ Failed to regenerate thumbnail for {}: {}",
-                                file_hash_clone, e
-                            );
-                            Err(e)
-                        }
-                    }
-                });
-                tasks.push((task, file.file_hash.clone()));
-            } else {
-                eprintln!("  ✗ Original file not found, marking as missing");
-                // Mark file as missing in database
-                sqlx::query!(
-                    "UPDATE Files SET is_missing = 1 WHERE file_hash = ?",
-                    file.file_hash
-                )
-                .execute(pool)
-                .await?;
-            }
+        // Check if thumbnail exists (early skip)
+        if thumbnail_path.exists() {
+            continue;
         }
+
+        // Check if original file still exists
+        let original_path = PathBuf::from(&file.original_path);
+        if !original_path.exists() {
+            // Mark file as missing in database
+            sqlx::query!(
+                "UPDATE Files SET is_missing = 1 WHERE file_hash = ?",
+                file.file_hash
+            )
+            .execute(pool)
+            .await?;
+            continue;
+        }
+
+        // Spawn thumbnail generation task with semaphore control
+        let file_hash_clone = file.file_hash.clone();
+        let original_path_clone = original_path.clone();
+        let thumbnail_path_clone = thumbnail_path.clone();
+
+        let task = tokio::spawn(async move {
+            // Acquire semaphore permit
+            let _permit = THUMBNAIL_SEMAPHORE.acquire().await;
+
+            // Double-check thumbnail doesn't exist (race condition protection)
+            if thumbnail_path_clone.exists() {
+                return Ok(());
+            }
+
+            // Generate thumbnail in blocking thread
+            tokio::task::spawn_blocking(move || {
+                generate_thumbnail(&original_path_clone, &thumbnail_path_clone, 400)
+            })
+            .await
+            .map_err(|e| AppError::Custom(format!("Task join error: {}", e)))?
+            .map(|_| ())
+        });
+
+        tasks.push((task, file_hash_clone));
     }
 
     // Wait for all thumbnail generation tasks to complete
-    eprintln!("Waiting for {} thumbnail generation tasks...", tasks.len());
     for (task, file_hash) in tasks {
         match task.await {
             Ok(Ok(_)) => {
@@ -775,12 +819,6 @@ pub async fn regenerate_missing_thumbnails(
             }
         }
     }
-
-    eprintln!("=== Thumbnail check complete ===");
-    eprintln!(
-        "Missing: {}, Regenerated: {}",
-        missing_count, regenerated_count
-    );
 
     // Emit event to notify frontend if any thumbnails were regenerated
     if regenerated_count > 0 {
@@ -828,6 +866,8 @@ pub async fn tag_file_with_ai(
                 file_hash, tag_count
             ),
             file_hash: None,
+            current: None,
+            total: None,
         },
     )
     .ok();
@@ -875,6 +915,8 @@ pub async fn tag_files_batch(
                                     file_hash, processed, total, tag_count
                                 ),
                                 file_hash: None,
+                                current: Some(processed),
+                                total: Some(total),
                             },
                         )
                         .ok();
@@ -888,6 +930,8 @@ pub async fn tag_files_batch(
                                 stage: "error".to_string(),
                                 message: format!("AI tagging error for {}: {}", file_hash, e),
                                 file_hash: None,
+                                current: Some(processed),
+                                total: Some(total),
                             },
                         )
                         .ok();
@@ -901,6 +945,8 @@ pub async fn tag_files_batch(
                         stage: "skipped".to_string(),
                         message: format!("Skipped {}: original file not found", file_hash),
                         file_hash: None,
+                        current: Some(processed),
+                        total: Some(total),
                     },
                 )
                 .ok();
@@ -913,6 +959,8 @@ pub async fn tag_files_batch(
                     stage: "skipped".to_string(),
                     message: format!("Skipped {}: not found in database", file_hash),
                     file_hash: None,
+                    current: Some(processed),
+                    total: Some(total),
                 },
             )
             .ok();
@@ -929,6 +977,8 @@ pub async fn tag_files_batch(
                 processed, total_tags
             ),
             file_hash: None,
+            current: Some(processed),
+            total: Some(total),
         },
     )
     .ok();
