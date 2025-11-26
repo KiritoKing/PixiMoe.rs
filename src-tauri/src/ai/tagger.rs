@@ -23,7 +23,7 @@ pub struct TagPrediction {
 // ============================================================================
 
 const MODEL_INPUT_SIZE: u32 = 448;
-const CONFIDENCE_THRESHOLD: f32 = 0.35;
+const CONFIDENCE_THRESHOLD: f32 = 0.50;
 const MAX_TAGS: usize = 50;
 
 // ============================================================================
@@ -40,19 +40,39 @@ static MODEL_SESSION: Lazy<Result<Arc<Mutex<Session>>, AppError>> = Lazy::new(||
 /// Load label map from CSV file
 /// CSV format: tag_id,name,category,count
 fn load_label_map() -> Result<HashMap<usize, (String, u32)>, AppError> {
-    let csv_path = get_models_dir()?.join("selected_tags.csv");
+    eprintln!("[AI Model] Loading label map...");
+
+    let csv_path = match get_models_dir() {
+        Ok(dir) => dir.join("selected_tags.csv"),
+        Err(e) => {
+            eprintln!("[AI Model] ERROR: Failed to get models directory: {}", e);
+            return Err(e);
+        }
+    };
+
+    eprintln!("[AI Model] Label map path: {}", csv_path.display());
 
     if !csv_path.exists() {
-        return Err(AppError::Custom(format!(
+        let error_msg = format!(
             "Label map file not found: {}. Please download selected_tags.csv from Hugging Face.",
             csv_path.display()
-        )));
+        );
+        eprintln!("[AI Model] ERROR: {}", error_msg);
+        return Err(AppError::Custom(error_msg));
     }
 
-    let mut map = HashMap::new();
-    let content = std::fs::read_to_string(&csv_path)
-        .map_err(|e| AppError::Custom(format!("Failed to read label map: {}", e)))?;
+    eprintln!("[AI Model] Reading label map file...");
+    let content = match std::fs::read_to_string(&csv_path) {
+        Ok(c) => c,
+        Err(e) => {
+            let error_msg = format!("Failed to read label map: {}", e);
+            eprintln!("[AI Model] ERROR: {}", error_msg);
+            return Err(AppError::Custom(error_msg));
+        }
+    };
 
+    eprintln!("[AI Model] Parsing label map...");
+    let mut map = HashMap::new();
     for (idx, line) in content.lines().enumerate() {
         if idx == 0 {
             continue; // Skip header
@@ -69,60 +89,155 @@ fn load_label_map() -> Result<HashMap<usize, (String, u32)>, AppError> {
     }
 
     if map.is_empty() {
-        return Err(AppError::Custom(
-            "Label map is empty or invalid".to_string(),
-        ));
+        let error_msg = "Label map is empty or invalid".to_string();
+        eprintln!("[AI Model] ERROR: {}", error_msg);
+        return Err(AppError::Custom(error_msg));
     }
 
+    eprintln!(
+        "[AI Model] Label map loaded successfully! {} tags",
+        map.len()
+    );
     Ok(map)
 }
 
 /// Load ONNX model
 fn load_model() -> Result<Arc<Mutex<Session>>, AppError> {
-    let model_path = get_models_dir()?.join("swin-v2-tagger-v3.onnx");
+    eprintln!("[AI Model] Starting model load...");
+
+    let model_path = match get_models_dir() {
+        Ok(dir) => dir.join("swin-v2-tagger-v3.onnx"),
+        Err(e) => {
+            eprintln!("[AI Model] ERROR: Failed to get models directory: {}", e);
+            return Err(e);
+        }
+    };
+
+    eprintln!("[AI Model] Model path: {}", model_path.display());
 
     if !model_path.exists() {
-        return Err(AppError::Custom(format!(
+        let error_msg = format!(
             "Model file not found: {}. Please download model.onnx from Hugging Face and rename to swin-v2-tagger-v3.onnx.",
             model_path.display()
-        )));
+        );
+        eprintln!("[AI Model] ERROR: {}", error_msg);
+        return Err(AppError::Custom(error_msg));
     }
 
-    let session = Session::builder()
-        .map_err(|e| AppError::Custom(format!("Failed to create ONNX session builder: {}", e)))?
-        .with_optimization_level(GraphOptimizationLevel::Level3)
-        .map_err(|e| AppError::Custom(format!("Failed to set optimization level: {}", e)))?
-        .commit_from_file(&model_path)
-        .map_err(|e| AppError::Custom(format!("Failed to load model: {}", e)))?;
+    eprintln!("[AI Model] Model file exists, creating session builder...");
+
+    let session = match Session::builder() {
+        Ok(builder) => builder,
+        Err(e) => {
+            let error_msg = format!("Failed to create ONNX session builder: {}", e);
+            eprintln!("[AI Model] ERROR: {}", error_msg);
+            return Err(AppError::Custom(error_msg));
+        }
+    };
+
+    eprintln!("[AI Model] Setting optimization level...");
+    let session = match session.with_optimization_level(GraphOptimizationLevel::Level3) {
+        Ok(s) => s,
+        Err(e) => {
+            let error_msg = format!("Failed to set optimization level: {}", e);
+            eprintln!("[AI Model] ERROR: {}", error_msg);
+            return Err(AppError::Custom(error_msg));
+        }
+    };
+
+    eprintln!("[AI Model] Loading model from file (this may take a moment)...");
+    let session = match session.commit_from_file(&model_path) {
+        Ok(s) => {
+            eprintln!("[AI Model] Model loaded successfully!");
+            s
+        }
+        Err(e) => {
+            let error_str = format!("{}", e);
+            let error_msg = if error_str.contains("libonnxruntime") || error_str.contains("dlopen")
+            {
+                format!(
+                    "Failed to load ONNX Runtime library. This usually means the ONNX Runtime binaries were not downloaded correctly.\n\n\
+                    Error: {}\n\n\
+                    To fix this:\n\
+                    1. Clean and rebuild: `cd src-tauri && cargo clean && cargo build`\n\
+                    2. Ensure you have internet connection (needed to download ONNX Runtime)\n\
+                    3. Check that ort crate features are correct in Cargo.toml\n\
+                    4. If problem persists, try: `cargo clean -p ort-sys && cargo build`",
+                    e
+                )
+            } else {
+                format!(
+                    "Failed to load model from {}: {}\n\n\
+                    This might be due to:\n\
+                    - Corrupted model file\n\
+                    - Missing ONNX Runtime dependencies\n\
+                    - Incompatible model version",
+                    model_path.display(),
+                    e
+                )
+            };
+            eprintln!("[AI Model] ERROR: {}", error_msg);
+            return Err(AppError::Custom(error_msg));
+        }
+    };
 
     Ok(Arc::new(Mutex::new(session)))
 }
 
 /// Get models directory path
+/// Tries multiple strategies to locate the models directory:
+/// 1. CARGO_MANIFEST_DIR (development mode) -> src-tauri/models
+/// 2. Executable directory -> {exe_dir}/models
+/// This function is designed to be fast and not block
 fn get_models_dir() -> Result<PathBuf, AppError> {
-    let exe_dir = std::env::current_exe()
-        .map_err(|e| AppError::Custom(format!("Failed to get executable directory: {}", e)))?
-        .parent()
-        .ok_or_else(|| AppError::Custom("Failed to get parent directory".to_string()))?
-        .to_path_buf();
-
-    // In development, models are in src-tauri/models
-    // In production, they should be in the same directory as the executable
-    let dev_models = exe_dir
-        .parent()
-        .and_then(|p| p.parent())
-        .and_then(|p| p.parent())
-        .and_then(|p| p.parent())
-        .map(|p| p.join("src-tauri").join("models"));
-
-    if let Some(dev_path) = dev_models {
+    // Strategy 1: Use CARGO_MANIFEST_DIR in development (fastest path)
+    if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        let dev_path = PathBuf::from(manifest_dir).join("models");
         if dev_path.exists() {
             return Ok(dev_path);
         }
     }
 
-    // Fallback to exe directory
-    Ok(exe_dir.join("models"))
+    // Strategy 2: Use executable directory (production or fallback)
+    let exe_dir = std::env::current_exe()
+        .map_err(|e| {
+            AppError::Custom(format!(
+                "Failed to get executable directory: {}. Please ensure the application is running correctly.",
+                e
+            ))
+        })?
+        .parent()
+        .ok_or_else(|| {
+            AppError::Custom(
+                "Failed to get executable parent directory. Please ensure the application is running correctly.".to_string()
+            )
+        })?
+        .to_path_buf();
+
+    let prod_path = exe_dir.join("models");
+    if prod_path.exists() {
+        return Ok(prod_path);
+    }
+
+    // All strategies failed - return error with helpful message
+    let attempted_paths = vec![
+        std::env::var("CARGO_MANIFEST_DIR")
+            .ok()
+            .map(|d| PathBuf::from(d).join("models")),
+        Some(prod_path.clone()),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>();
+
+    Err(AppError::Custom(format!(
+        "Models directory not found. Tried:\n  {}\n\nPlease ensure model files (swin-v2-tagger-v3.onnx and selected_tags.csv) are in one of these locations.",
+        attempted_paths
+            .iter()
+            .map(|p| format!("  - {}", p.display()))
+            .collect::<Vec<_>>()
+            .join("\n")
+    )))
 }
 
 // ============================================================================
@@ -133,7 +248,7 @@ fn get_models_dir() -> Result<PathBuf, AppError> {
 /// - Resize to 448x448
 /// - Convert to RGB
 /// - Normalize to [0.0, 1.0]
-/// - Convert to NCHW format (batch, channels, height, width)
+/// - Convert to NHWC format (batch, height, width, channels) - model expects this format
 fn preprocess_image(image: DynamicImage) -> Result<Array4<f32>, AppError> {
     // Resize to model input size
     let resized = image.resize_exact(
@@ -145,18 +260,20 @@ fn preprocess_image(image: DynamicImage) -> Result<Array4<f32>, AppError> {
     // Convert to RGB
     let rgb_image = resized.to_rgb8();
 
-    // Create ndarray with shape [1, 3, 448, 448] (NCHW format)
+    // Create ndarray with shape [1, 448, 448, 3] (NHWC format)
+    // Model expects: batch=1, height=448, width=448, channels=3
     let mut array =
-        Array4::<f32>::zeros((1, 3, MODEL_INPUT_SIZE as usize, MODEL_INPUT_SIZE as usize));
+        Array4::<f32>::zeros((1, MODEL_INPUT_SIZE as usize, MODEL_INPUT_SIZE as usize, 3));
 
     for (x, y, pixel) in rgb_image.enumerate_pixels() {
         let r = pixel[0] as f32 / 255.0;
         let g = pixel[1] as f32 / 255.0;
         let b = pixel[2] as f32 / 255.0;
 
-        array[[0, 0, y as usize, x as usize]] = r;
-        array[[0, 1, y as usize, x as usize]] = g;
-        array[[0, 2, y as usize, x as usize]] = b;
+        // NHWC format: [batch, height, width, channel]
+        array[[0, y as usize, x as usize, 0]] = r;
+        array[[0, y as usize, x as usize, 1]] = g;
+        array[[0, y as usize, x as usize, 2]] = b;
     }
 
     Ok(array)
@@ -168,13 +285,21 @@ fn preprocess_image(image: DynamicImage) -> Result<Array4<f32>, AppError> {
 
 /// Classify an image and return predicted tags
 pub async fn classify_image(image_path: &Path) -> Result<Vec<TagPrediction>, AppError> {
-    // Check if model is available
+    eprintln!(
+        "[AI Tagging] Starting classification for: {}",
+        image_path.display()
+    );
+
+    // Check if model is available (this will trigger lazy initialization if not already done)
     if !is_model_available() {
-        return Err(AppError::Custom(
+        let error_msg =
             "AI model not available. Please check models/README.md for setup instructions."
-                .to_string(),
-        ));
+                .to_string();
+        eprintln!("[AI Tagging] ERROR: {}", error_msg);
+        return Err(AppError::Custom(error_msg));
     }
+
+    eprintln!("[AI Tagging] Model is available, proceeding with inference");
 
     // Load image
     let image = image::open(image_path)
@@ -221,8 +346,21 @@ pub async fn classify_image(image_path: &Path) -> Result<Vec<TagPrediction>, App
             .map_err(|e| AppError::Custom(format!("Failed to extract output tensor: {}", e)))?;
 
         // Convert to Vec<f32>
+        // Model outputs logits, need to apply sigmoid to get probabilities
         let (_shape, data) = output_tensor;
-        let probabilities: Vec<f32> = data.iter().copied().collect();
+        let probabilities: Vec<f32> = data
+            .iter()
+            .map(|&logit| {
+                // Apply sigmoid: 1 / (1 + exp(-x))
+                // Use stable sigmoid to avoid overflow
+                if logit >= 0.0 {
+                    1.0 / (1.0 + (-logit).exp())
+                } else {
+                    let exp_x = logit.exp();
+                    exp_x / (1.0 + exp_x)
+                }
+            })
+            .collect();
 
         Ok::<Vec<f32>, AppError>(probabilities)
     })
@@ -263,6 +401,59 @@ pub async fn classify_image(image_path: &Path) -> Result<Vec<TagPrediction>, App
 }
 
 /// Check if AI tagging is available
+/// This function is safe to call and will not block or panic
 pub fn is_model_available() -> bool {
-    LABEL_MAP.is_ok() && MODEL_SESSION.is_ok()
+    // Access Lazy values safely - they will initialize on first access
+    // If initialization fails, the Result will be Err, and is_ok() returns false
+    let label_ok = LABEL_MAP.is_ok();
+    let session_ok = MODEL_SESSION.is_ok();
+
+    if !label_ok {
+        eprintln!("[AI Model] Label map not available");
+        if let Err(e) = LABEL_MAP.as_ref() {
+            eprintln!("[AI Model] Label map error: {}", e);
+        }
+    }
+
+    if !session_ok {
+        eprintln!("[AI Model] Model session not available");
+        if let Err(e) = MODEL_SESSION.as_ref() {
+            eprintln!("[AI Model] Model session error: {}", e);
+        }
+    }
+
+    label_ok && session_ok
+}
+
+/// Get model status information for debugging
+pub fn get_model_status() -> Result<ModelStatus, AppError> {
+    let models_dir = get_models_dir()?;
+    let model_path = models_dir.join("swin-v2-tagger-v3.onnx");
+    let csv_path = models_dir.join("selected_tags.csv");
+
+    Ok(ModelStatus {
+        models_dir: models_dir.display().to_string(),
+        model_file_exists: model_path.exists(),
+        model_file_path: model_path.display().to_string(),
+        csv_file_exists: csv_path.exists(),
+        csv_file_path: csv_path.display().to_string(),
+        label_map_loaded: LABEL_MAP.is_ok(),
+        model_session_loaded: MODEL_SESSION.is_ok(),
+        label_map_error: LABEL_MAP.as_ref().err().map(|e| format!("{}", e)),
+        model_session_error: MODEL_SESSION.as_ref().err().map(|e| format!("{}", e)),
+    })
+}
+
+/// Model status information for debugging
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ModelStatus {
+    pub models_dir: String,
+    pub model_file_exists: bool,
+    pub model_file_path: String,
+    pub csv_file_exists: bool,
+    pub csv_file_path: String,
+    pub label_map_loaded: bool,
+    pub model_session_loaded: bool,
+    pub label_map_error: Option<String>,
+    pub model_session_error: Option<String>,
 }

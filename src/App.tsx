@@ -28,7 +28,7 @@ function App() {
   }, [queryClient]);
 
   // Use search if tags are selected, otherwise get all files
-  const { data: allFiles, isLoading: allLoading } = useFiles(0, 100);
+  const { data: allFiles, isLoading: allLoading } = useFiles();
   const { data: filteredFiles, isLoading: searchLoading } = useSearchFiles(selectedTagIds);
 
   const files = selectedTagIds.length > 0 ? filteredFiles : allFiles;
@@ -81,7 +81,7 @@ function App() {
           />
 
           {/* Image grid */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-hidden">
             <ImageGrid files={files} isLoading={isLoading} />
           </div>
         </div>

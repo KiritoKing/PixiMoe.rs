@@ -138,10 +138,16 @@ export function ImportButton() {
     }
   };
 
+  // 检查是否有实际内容要显示
+  const hasContent = 
+    importProgress !== null ||
+    (thumbnailProgress !== null && thumbnailProgress.stage === "generating") ||
+    (aiProgress !== null && (aiProgress.stage === "classifying" || aiProgress.stage === "saving_tags"));
+
   return (
     <>
       <div className="relative">
-        <Popover open={(importProgress || thumbnailProgress || aiProgress) !== null}>
+        <Popover open={hasContent}>
           <PopoverTrigger asChild>
             <Button
               onClick={handleFileSelect}

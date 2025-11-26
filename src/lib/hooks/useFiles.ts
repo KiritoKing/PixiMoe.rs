@@ -2,13 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
 import type { FileRecord } from "@/types";
 
-export function useFiles(offset = 0, limit = 100) {
+export function useFiles() {
   return useQuery({
-    queryKey: ["files", offset, limit],
+    queryKey: ["files"],
     queryFn: async () => {
       const files = await invoke<FileRecord[]>("get_all_files", {
-        offset,
-        limit,
+        offset: 0,
+        limit: undefined, // No limit - get all files
       });
       return files;
     },

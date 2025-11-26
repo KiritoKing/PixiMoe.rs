@@ -126,15 +126,19 @@ The system SHALL ensure all UI components and Tauri invocations are fully type-s
 - **AND** React DevTools shows correct prop types
 
 ### Requirement: Image Grid Display Component
-The system SHALL provide a responsive grid component for displaying image thumbnails with selection support.
+The system SHALL provide a responsive grid component for displaying image thumbnails with selection support and virtual scrolling for performance optimization.
 
-#### Scenario: Image grid renders all files
+#### Scenario: Image grid renders all files with virtual scrolling
 - **WHEN** `ImageGrid` component mounts
-- **THEN** `useFiles()` hook fetches all file records from backend
+- **THEN** `useFiles()` hook fetches all file records from backend (no pagination limit)
 - **AND** loading skeleton placeholders are displayed during fetch
-- **AND** CSS Grid layout renders images in responsive columns (auto-fill, min 200px)
-- **AND** each image displays thumbnail via `<img src="app-asset://thumbnails/{hash}.webp">`
+- **AND** TanStack Virtual's `useVirtualizer` is configured for virtual scrolling
+- **AND** only visible image cards are rendered to DOM (typically < 50 items)
+- **AND** virtual scroll container uses absolute positioning for grid layout
+- **AND** responsive columns (2-6 columns) are maintained through calculated row/column positions
+- **AND** each visible image displays thumbnail via `<img src="app-asset://thumbnails/{hash}.webp">`
 - **AND** thumbnails load instantly from WebView cache (after first load)
+- **AND** scrolling is smooth (60fps) even with 1000+ images
 
 #### Scenario: Image cards show metadata on hover
 - **WHEN** user hovers over image card
@@ -164,6 +168,20 @@ The system SHALL provide a responsive grid component for displaying image thumbn
 - **AND** batch tag editor toolbar appears when 2+ images selected
 - **WHEN** user clicks selected image again
 - **THEN** image is deselected and removed from selection array
+
+#### Scenario: Virtual scrolling handles dynamic item sizes
+- **WHEN** image cards have different aspect ratios or sizes
+- **THEN** `useVirtualizer` uses `measureElement` to dynamically measure actual card heights
+- **AND** virtual scroll container adjusts total height based on measured sizes
+- **AND** scrolling remains smooth without visual jumps
+- **AND** `estimateSize` provides reasonable initial estimate (e.g., 200px for square cards)
+
+#### Scenario: Virtual scrolling works with tag filtering
+- **WHEN** user selects tags to filter images
+- **THEN** `useSearchFiles` returns filtered file list
+- **AND** virtual scroll container updates to show only filtered images
+- **AND** virtual scrolling continues to work correctly with filtered results
+- **AND** scroll position is maintained or reset appropriately
 
 ### Requirement: Tag Filter Panel Component
 The system SHALL provide a sidebar component for filtering files by tags.

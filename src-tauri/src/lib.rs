@@ -93,6 +93,7 @@ pub fn run() {
             commands::files::get_thumbnail_url,
             commands::files::tag_file_with_ai,
             commands::files::tag_files_batch,
+            commands::files::test_ai_model,
             // Tag commands
             commands::tags::get_all_tags,
             commands::tags::get_file_tags,

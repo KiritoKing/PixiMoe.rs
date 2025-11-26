@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { X, ChevronLeft, ChevronRight, Wand2, Loader2 } from "lucide-react";
 import { useFileTags, useAddTag, useRemoveTag, useRunAITagging } from "@/lib/hooks";
 import type { FileRecord } from "@/types";
@@ -7,11 +7,13 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import toast from "react-hot-toast";
+import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 
 interface ImageViewerProps {
   file: FileRecord;
@@ -24,11 +26,14 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
   const [imageUrl, setImageUrl] = useState<string>("");
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
   const { data: tags = [] } = useFileTags(file.file_hash);
   const addTagMutation = useAddTag();
   const removeTagMutation = useRemoveTag();
   const aiTagMutation = useRunAITagging();
   const [newTags, setNewTags] = useState<string[]>([]);
+  const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
 
   const hasAITags = tags.some((tag) => tag.type === "ai-generated");
 
@@ -36,12 +41,64 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < allFiles.length - 1;
 
+  // Calculate initial scale to fit image width to container (prioritize width)
+  const calculateInitialScale = useCallback((imgWidth: number, imgHeight: number): number => {
+    if (!imageContainerRef.current || imgWidth === 0 || imgHeight === 0) {
+      return 1;
+    }
+    const containerWidth = imageContainerRef.current.clientWidth;
+    const containerHeight = imageContainerRef.current.clientHeight;
+    
+    if (containerWidth === 0 || containerHeight === 0) {
+      return 1;
+    }
+    
+    // Calculate scale to fit width (with 95% padding to ensure it fits)
+    const widthScale = (containerWidth * 0.95) / imgWidth;
+    // Calculate scale to fit height (with 95% padding)
+    const heightScale = (containerHeight * 0.95) / imgHeight;
+    
+    // Prioritize width fitting, but ensure it doesn't exceed height
+    // Use the smaller scale to ensure image fits within container
+    const scale = Math.min(widthScale, heightScale);
+    return Math.max(scale, 0.1); // Minimum scale of 0.1
+  }, []);
+
+
+  // Calculate initial scale based on image dimensions
+  const initialScale = imageDimensions 
+    ? calculateInitialScale(imageDimensions.width, imageDimensions.height)
+    : 1;
+
   useEffect(() => {
     // Use app-asset:// protocol to load original image
     setImageUrl(`app-asset://localhost/originals/${file.file_hash}`);
     setImageLoading(true);
     setImageError(false);
+    setImageDimensions(null);
   }, [file.file_hash]);
+
+  // Apply initial scale and center after image dimensions are set
+  useEffect(() => {
+    if (imageDimensions && transformRef.current && imageContainerRef.current && !imageLoading) {
+      const scale = calculateInitialScale(imageDimensions.width, imageDimensions.height);
+      // Use a longer timeout to ensure the component is fully initialized
+      setTimeout(() => {
+        if (transformRef.current) {
+          // Reset to center first
+          transformRef.current.resetTransform();
+          // Then apply scale after reset completes
+          setTimeout(() => {
+            if (transformRef.current) {
+              const state = transformRef.current.state;
+              transformRef.current.setTransform(state.positionX, state.positionY, scale);
+            }
+          }, 150);
+        }
+      }, 300);
+    }
+  }, [imageDimensions, imageLoading, calculateInitialScale]);
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -88,12 +145,12 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-7xl w-full h-[90vh] p-0 gap-0">
+      <DialogContent className="max-w-7xl w-[90vw] h-[90vh] p-0 gap-0 flex flex-col">
         <DialogHeader className="sr-only">
-          <span>Image Viewer</span>
+          <DialogTitle>Image Viewer</DialogTitle>
         </DialogHeader>
         
-        <div className="relative flex w-full h-full">
+        <div className="relative flex w-full h-full min-h-0">
           {/* Close button */}
           <Button
             variant="ghost"
@@ -127,36 +184,75 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
           )}
 
           {/* Image */}
-          <div className="flex-1 flex items-center justify-center relative bg-muted">
+          <div 
+            ref={imageContainerRef}
+            className="flex-1 flex items-center justify-center relative bg-muted min-w-0 overflow-hidden"
+          >
             {imageLoading && (
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center z-20">
                 <Loader2 className="w-12 h-12 animate-spin text-muted-foreground" />
               </div>
             )}
             {imageError && (
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center z-20">
                 <div className="text-center">
                   <p className="text-lg font-semibold mb-2">Failed to load image</p>
                   <p className="text-sm text-muted-foreground">The original file may have been moved or deleted</p>
                 </div>
               </div>
             )}
-            <img
-              src={imageUrl}
-              alt={file.original_path}
-              className="max-w-full max-h-full object-contain"
-              onLoad={() => setImageLoading(false)}
-              onError={() => {
-                setImageLoading(false);
-                setImageError(true);
-              }}
-              style={{ display: imageError ? 'none' : 'block' }}
-            />
+            {!imageError && (
+              <TransformWrapper
+                key={`${file.file_hash}-${imageDimensions ? 'loaded' : 'loading'}`}
+                ref={transformRef}
+                initialScale={initialScale}
+                minScale={0.1}
+                maxScale={5}
+                centerOnInit={true}
+                wheel={{
+                  step: 0.1,
+                }}
+                doubleClick={{
+                  disabled: false,
+                  step: 0.7,
+                }}
+                panning={{
+                  disabled: false,
+                }}
+              >
+                <TransformComponent
+                  wrapperClass="w-full h-full"
+                  contentClass="w-full h-full"
+                >
+                  <img
+                    src={imageUrl}
+                    alt={file.original_path}
+                    onLoad={(e) => {
+                      const img = e.currentTarget;
+                      setImageDimensions({
+                        width: img.naturalWidth,
+                        height: img.naturalHeight,
+                      });
+                      setImageLoading(false);
+                    }}
+                    onError={() => {
+                      setImageLoading(false);
+                      setImageError(true);
+                    }}
+                    style={{ 
+                      display: 'block',
+                      width: 'auto',
+                      height: 'auto',
+                    }}
+                  />
+                </TransformComponent>
+              </TransformWrapper>
+            )}
           </div>
 
           {/* Sidebar */}
-          <div className="w-80 border-l bg-background">
-            <ScrollArea className="h-full">
+          <div className="w-80 border-l bg-background shrink-0 overflow-hidden flex flex-col">
+            <ScrollArea className="flex-1">
               <div className="p-4">
                 <h3 className="text-lg font-semibold mb-4">File Details</h3>
 

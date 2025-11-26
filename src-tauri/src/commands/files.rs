@@ -152,19 +152,47 @@ async fn tag_file_automatically(
 ) -> Result<usize, AppError> {
     use crate::ai::tagger;
 
+    eprintln!(
+        "[AI Tagging] Starting AI tagging for file_hash: {}, path: {}",
+        file_hash,
+        file_path.display()
+    );
+
+    // Check if model is available first
+    if !tagger::is_model_available() {
+        let error_msg =
+            "AI model not available. Please check models/README.md for setup instructions.";
+        eprintln!("[AI Tagging] ERROR: {}", error_msg);
+        return Err(AppError::Custom(error_msg.to_string()));
+    }
+
     // Emit progress: classifying
     app.emit(
         "ai_tagging_progress",
         ProgressEvent {
             stage: "classifying".to_string(),
             message: format!("Running AI inference for {}...", file_hash),
-            file_hash: None,
+            file_hash: Some(file_hash.to_string()),
         },
     )
     .ok();
 
     // Run AI classification
-    let predictions = tagger::classify_image(file_path).await?;
+    let predictions = match tagger::classify_image(file_path).await {
+        Ok(preds) => {
+            eprintln!(
+                "[AI Tagging] Inference completed for {}: {} predictions",
+                file_hash,
+                preds.len()
+            );
+            preds
+        }
+        Err(e) => {
+            let error_msg = format!("AI inference failed for {}: {}", file_hash, e);
+            eprintln!("[AI Tagging] ERROR: {}", error_msg);
+            return Err(e);
+        }
+    };
     let tag_count = predictions.len();
 
     // Emit progress: saving tags
@@ -173,7 +201,7 @@ async fn tag_file_automatically(
         ProgressEvent {
             stage: "saving_tags".to_string(),
             message: format!("Saving {} tags for {}...", tag_count, file_hash),
-            file_hash: None,
+            file_hash: Some(file_hash.to_string()),
         },
     )
     .ok();
@@ -182,7 +210,7 @@ async fn tag_file_automatically(
     let mut added_count = 0;
     for prediction in predictions {
         // Insert or get tag
-        let tag = sqlx::query!(
+        let tag = match sqlx::query!(
             r#"
             INSERT INTO Tags (name, type)
             VALUES (?, 'general')
@@ -192,10 +220,20 @@ async fn tag_file_automatically(
             prediction.name
         )
         .fetch_one(pool)
-        .await?;
+        .await
+        {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!(
+                    "[AI Tagging] ERROR: Failed to insert tag '{}' for {}: {}",
+                    prediction.name, file_hash, e
+                );
+                continue; // Skip this tag but continue with others
+            }
+        };
 
         // Link to file (count only new associations)
-        let result = sqlx::query!(
+        let result = match sqlx::query!(
             r#"
             INSERT OR IGNORE INTO FileTags (file_hash, tag_id)
             VALUES (?, ?)
@@ -204,13 +242,27 @@ async fn tag_file_automatically(
             tag.tag_id
         )
         .execute(pool)
-        .await?;
+        .await
+        {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!(
+                    "[AI Tagging] ERROR: Failed to link tag '{}' to file {}: {}",
+                    prediction.name, file_hash, e
+                );
+                continue; // Skip this tag but continue with others
+            }
+        };
 
         if result.rows_affected() > 0 {
             added_count += 1;
         }
     }
 
+    eprintln!(
+        "[AI Tagging] Completed for {}: {} tags added",
+        file_hash, added_count
+    );
     Ok(added_count)
 }
 
@@ -436,7 +488,7 @@ pub async fn import_file(
             {
                 Ok(tag_count) => {
                     eprintln!(
-                        "AI tagging completed for {}: {} tags added",
+                        "[AI Tagging] Completed for {}: {} tags added",
                         file_hash_clone, tag_count
                     );
                     // Emit complete event
@@ -446,13 +498,13 @@ pub async fn import_file(
                             ProgressEvent {
                                 stage: "complete".to_string(),
                                 message: format!("AI tagging complete: {} tags added", tag_count),
-                                file_hash: None,
+                                file_hash: Some(file_hash_clone.clone()),
                             },
                         )
                         .ok();
                 }
                 Err(e) => {
-                    eprintln!("AI tagging failed for {}: {}", file_hash_clone, e);
+                    eprintln!("[AI Tagging] ERROR: Failed for {}: {}", file_hash_clone, e);
                     // Emit error event
                     app_handle
                         .emit(
@@ -460,7 +512,7 @@ pub async fn import_file(
                             ProgressEvent {
                                 stage: "error".to_string(),
                                 message: format!("AI tagging error: {}", e),
-                                file_hash: None,
+                                file_hash: Some(file_hash_clone.clone()),
                             },
                         )
                         .ok();
@@ -489,23 +541,61 @@ pub async fn get_all_files(
     limit: Option<i64>,
 ) -> Result<Vec<FileRecord>, AppError> {
     let offset = offset.unwrap_or(0);
-    let limit = limit.unwrap_or(100);
 
-    let files = sqlx::query_as!(
-        FileRecord,
-        r#"
-        SELECT file_hash, original_path, file_size_bytes, file_last_modified, width, height,
-               date_imported, is_missing
-        FROM Files
-        WHERE is_missing = 0
-        ORDER BY date_imported DESC
-        LIMIT ? OFFSET ?
-        "#,
-        limit,
-        offset
-    )
-    .fetch_all(pool.inner())
-    .await?;
+    // If limit is None or 0, return all files (no limit)
+    let files = if let Some(limit_val) = limit {
+        if limit_val > 0 {
+            sqlx::query_as!(
+                FileRecord,
+                r#"
+                SELECT file_hash, original_path, file_size_bytes, file_last_modified, width, height,
+                       date_imported, is_missing
+                FROM Files
+                WHERE is_missing = 0
+                ORDER BY date_imported DESC
+                LIMIT ? OFFSET ?
+                "#,
+                limit_val,
+                offset
+            )
+            .fetch_all(pool.inner())
+            .await?
+        } else {
+            // limit is 0 or negative, return all files
+            // SQLite requires LIMIT with OFFSET, so use a very large LIMIT
+            sqlx::query_as!(
+                FileRecord,
+                r#"
+                SELECT file_hash, original_path, file_size_bytes, file_last_modified, width, height,
+                       date_imported, is_missing
+                FROM Files
+                WHERE is_missing = 0
+                ORDER BY date_imported DESC
+                LIMIT -1 OFFSET ?
+                "#,
+                offset
+            )
+            .fetch_all(pool.inner())
+            .await?
+        }
+    } else {
+        // limit is None, return all files
+        // SQLite requires LIMIT with OFFSET, so use a very large LIMIT
+        sqlx::query_as!(
+            FileRecord,
+            r#"
+            SELECT file_hash, original_path, file_size_bytes, file_last_modified, width, height,
+                   date_imported, is_missing
+            FROM Files
+            WHERE is_missing = 0
+            ORDER BY date_imported DESC
+            LIMIT -1 OFFSET ?
+            "#,
+            offset
+        )
+        .fetch_all(pool.inner())
+        .await?
+    };
 
     Ok(files)
 }
@@ -844,4 +934,114 @@ pub async fn tag_files_batch(
     .ok();
 
     Ok(total_tags)
+}
+
+/// Test AI model loading and inference
+/// Returns model status, inference results, timing, and execution provider info
+#[tauri::command]
+pub async fn test_ai_model(image_path: String) -> Result<TestModelResult, AppError> {
+    use crate::ai::tagger;
+    use std::time::Instant;
+
+    let start_time = Instant::now();
+
+    // Get model status
+    let model_status = tagger::get_model_status()?;
+    let model_check_time = start_time.elapsed();
+
+    // Check if model is available
+    if !tagger::is_model_available() {
+        let label_map_loaded = model_status.label_map_loaded;
+        let model_session_loaded = model_status.model_session_loaded;
+        return Ok(TestModelResult {
+            success: false,
+            model_status,
+            model_check_time_ms: model_check_time.as_millis() as u64,
+            inference_time_ms: 0,
+            execution_provider: "N/A".to_string(),
+            predictions: Vec::new(),
+            error: Some(format!(
+                "Model not available. Label map loaded: {}, Model session loaded: {}",
+                label_map_loaded, model_session_loaded
+            )),
+        });
+    }
+
+    // Check if image file exists
+    let image_path_buf = PathBuf::from(&image_path);
+    if !image_path_buf.exists() {
+        return Ok(TestModelResult {
+            success: false,
+            model_status,
+            model_check_time_ms: model_check_time.as_millis() as u64,
+            inference_time_ms: 0,
+            execution_provider: "N/A".to_string(),
+            predictions: Vec::new(),
+            error: Some(format!("Image file not found: {}", image_path)),
+        });
+    }
+
+    // Run inference
+    let inference_start = Instant::now();
+    let predictions = match tagger::classify_image(&image_path_buf).await {
+        Ok(preds) => preds,
+        Err(e) => {
+            return Ok(TestModelResult {
+                success: false,
+                model_status,
+                model_check_time_ms: model_check_time.as_millis() as u64,
+                inference_time_ms: inference_start.elapsed().as_millis() as u64,
+                execution_provider: "Unknown".to_string(),
+                predictions: Vec::new(),
+                error: Some(format!("Inference failed: {}", e)),
+            });
+        }
+    };
+    let inference_time = inference_start.elapsed();
+
+    // Try to determine execution provider (this is approximate)
+    // ONNX Runtime doesn't directly expose this, so we'll use a placeholder
+    let execution_provider = if cfg!(target_os = "macos") {
+        "CoreML (likely)"
+    } else if cfg!(target_os = "windows") {
+        "DirectML (likely)"
+    } else if cfg!(target_os = "linux") {
+        "CUDA (likely)"
+    } else {
+        "CPU"
+    }
+    .to_string();
+
+    Ok(TestModelResult {
+        success: true,
+        model_status,
+        model_check_time_ms: model_check_time.as_millis() as u64,
+        inference_time_ms: inference_time.as_millis() as u64,
+        execution_provider,
+        predictions: predictions
+            .iter()
+            .map(|p| TagPredictionResult {
+                name: p.name.clone(),
+                confidence: p.confidence,
+            })
+            .collect(),
+        error: None,
+    })
+}
+
+#[derive(Debug, Serialize)]
+pub struct TestModelResult {
+    pub success: bool,
+    pub model_status: crate::ai::tagger::ModelStatus,
+    pub model_check_time_ms: u64,
+    pub inference_time_ms: u64,
+    pub execution_provider: String,
+    pub predictions: Vec<TagPredictionResult>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TagPredictionResult {
+    pub name: String,
+    pub confidence: f32,
 }
