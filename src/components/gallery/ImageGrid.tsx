@@ -1,6 +1,9 @@
 import { useState, useCallback, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { RefreshCw, ImageIcon } from "lucide-react";
 import { useFiles } from "@/lib/hooks";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import type { FileRecord, ProgressEvent } from "@/types";
 import { ImageViewer } from "./ImageViewer";
 import { BatchTagEditor } from "@/components/tags/BatchTagEditor";
@@ -113,10 +116,7 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 p-4">
         {Array.from({ length: 12 }).map((_, i) => (
-          <div
-            key={i}
-            className="aspect-square bg-gray-200 dark:bg-gray-800 animate-pulse rounded-lg"
-          />
+          <Skeleton key={i} className="aspect-square rounded-lg" />
         ))}
       </div>
     );
@@ -125,26 +125,11 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
   if (files.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <div className="text-gray-400 dark:text-gray-600 mb-4">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-24 w-24 mx-auto"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-        </div>
-        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
+        <ImageIcon className="h-24 w-24 mx-auto mb-4 text-muted-foreground" />
+        <h3 className="text-xl font-semibold mb-2">
           No images yet
         </h3>
-        <p className="text-gray-500 dark:text-gray-400 max-w-md">
+        <p className="text-muted-foreground max-w-md">
           Import some images to get started. Click the "Import" button above to select files.
         </p>
       </div>
@@ -156,22 +141,16 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
       {/* Refresh button - shown when there are files */}
       {files.length > 0 && (
         <div className="flex justify-end px-4 pt-4 pb-2">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleRefreshAll}
             disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="刷新所有缩略图"
           >
-            <svg 
-              className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             刷新缩略图
-          </button>
+          </Button>
         </div>
       )}
       

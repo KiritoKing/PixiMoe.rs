@@ -25,3 +25,6 @@ dist-ssr
 
 .env
 *.db
+
+# YoYo AI version control directory
+.yoyo/

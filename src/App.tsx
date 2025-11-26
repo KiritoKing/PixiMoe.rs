@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import { ImageGrid } from "./components/gallery/ImageGrid";
 import { TagFilterPanel } from "./components/tags/TagFilterPanel";
 import { ImportButton } from "./components/import/ImportButton";
+import { ThemeToggle } from "./components/theme-toggle";
 import { useFiles, useSearchFiles } from "./lib/hooks";
 import "./App.css";
 
@@ -54,11 +55,12 @@ function App() {
           },
         }}
       />
-      <div className="flex flex-col h-screen bg-white dark:bg-gray-950">
+      <div className="flex flex-col h-screen bg-background">
         {/* Top toolbar */}
-        <div className="border-b border-gray-200 dark:border-gray-800 p-4 flex items-center justify-between">
+        <div className="border-b p-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold">AI Image Gallery</h1>
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <ImportButton />
           </div>
         </div>

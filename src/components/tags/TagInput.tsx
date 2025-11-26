@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { useSearchTags } from "@/lib/hooks";
 import { X } from "lucide-react";
+import { useSearchTags } from "@/lib/hooks";
+import { Badge } from "@/components/ui/badge";
 
 interface TagInputProps {
   value: string[];
@@ -47,21 +48,18 @@ export function TagInput({ value, onChange, placeholder = "Add tags..." }: TagIn
 
   return (
     <div className="relative w-full">
-      <div className="flex flex-wrap gap-2 p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 min-h-[42px]">
+      <div className="flex flex-wrap gap-2 p-2 border rounded-md min-h-[42px]">
         {value.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-sm"
-          >
+          <Badge key={tag} variant="secondary" className="gap-1">
             {tag}
             <button
               type="button"
               onClick={() => handleRemoveTag(tag)}
-              className="hover:text-blue-600 dark:hover:text-blue-300"
+              className="hover:text-blue-600"
             >
               <X className="w-3 h-3" />
             </button>
-          </span>
+          </Badge>
         ))}
         <input
           ref={inputRef}
@@ -78,17 +76,17 @@ export function TagInput({ value, onChange, placeholder = "Add tags..." }: TagIn
 
       {/* Autocomplete suggestions */}
       {showSuggestions && (
-        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
           {suggestions.map((tag) => (
             <button
               key={tag.tag_id}
               type="button"
               onClick={() => handleAddTag(tag.name)}
-              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center justify-between"
+              className="w-full text-left px-3 py-2 hover:bg-accent text-sm flex items-center justify-between"
             >
               <span>{tag.name}</span>
               {tag.file_count !== undefined && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">
+                <span className="text-xs text-muted-foreground">
                   {tag.file_count} files
                 </span>
               )}
