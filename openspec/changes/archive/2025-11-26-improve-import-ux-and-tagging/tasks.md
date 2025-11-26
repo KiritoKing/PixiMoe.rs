@@ -63,72 +63,72 @@
 - [x] 5.2 Create `useToast()` hook for programmatic toast invocation (using react-hot-toast API)
 - [x] 5.3 Add ToastProvider to App.tsx root
 - [x] 5.4 Replace all `alert()` calls in ImportButton.tsx with toast notifications
-- [ ] 5.5 Add "View Details" link in toasts that opens notification center
+- [x] 5.5 Add "View Details" link in toasts that opens notification center
 - [x] 5.6 Style toasts to match application theme (dark mode support)
 - [ ] 5.7 Test toast stacking with multiple simultaneous notifications
 
 ## 5.5. Frontend: Persistent Notification Center
-- [ ] 5.5.1 Create `NotificationCenter.tsx` component with right sidebar/dropdown UI
-- [ ] 5.5.2 Create notification data model (id, type, title, message, details, timestamp, read, pinned)
-- [ ] 5.5.3 Implement `useNotifications()` hook to manage notification state with Zustand
-- [ ] 5.5.4 Persist notifications to Tauri Store (last 100, auto-cleanup >7 days)
-- [ ] 5.5.5 Add bell icon to top toolbar with unread count badge
-- [ ] 5.5.6 Implement type filtering (All, Errors, Success, Info, Warning)
-- [ ] 5.5.7 Add "Mark as Read" functionality (auto-mark on open, manual mark per item)
-- [ ] 5.5.8 Add "Clear All" with confirmation dialog
-- [ ] 5.5.9 Add expandable details section for each notification
-- [ ] 5.5.10 Add pinned notification support for critical errors
-- [ ] 5.5.11 Style notification center to match application theme
+- [x] 5.5.1 Create `NotificationCenter.tsx` component with right sidebar/dropdown UI
+- [x] 5.5.2 Create notification data model (id, type, title, message, details, timestamp, read, pinned)
+- [x] 5.5.3 Implement `useNotifications()` hook to manage notification state with Zustand
+- [x] 5.5.4 Persist notifications to Tauri Store (last 100, auto-cleanup >7 days)
+- [x] 5.5.5 Add bell icon to top toolbar with unread count badge
+- [x] 5.5.6 Implement type filtering (All, Errors, Success, Info, Warning)
+- [x] 5.5.7 Add "Mark as Read" functionality (auto-mark on open, manual mark per item)
+- [x] 5.5.8 Add "Clear All" with confirmation dialog
+- [x] 5.5.9 Add expandable details section for each notification
+- [x] 5.5.10 Add pinned notification support for critical errors
+- [x] 5.5.11 Style notification center to match application theme
 - [ ] 5.5.12 Test notification persistence across app restarts
 
 ## 6. Frontend: Image Lightbox Viewer
-- [ ] 6.1 Create `ImageViewer.tsx` component with Dialog/Modal from shadcn/ui
-- [ ] 6.2 Add click handler to ImageCard in ImageGrid.tsx to open lightbox
-- [ ] 6.3 Implement full-resolution image loading from `original_path`
-- [ ] 6.4 Add metadata sidebar showing file details and tags
-- [ ] 6.5 Implement left/right navigation with arrow buttons and keyboard shortcuts
-- [ ] 6.6 Add close functionality (X button, Escape key, backdrop click)
-- [ ] 6.7 Add loading/error states for missing or corrupted files
+- [x] 6.1 Create `ImageViewer.tsx` component with Dialog/Modal from shadcn/ui
+- [x] 6.2 Add click handler to ImageCard in ImageGrid.tsx to open lightbox
+- [x] 6.3 Implement full-resolution image loading from `original_path`
+- [x] 6.4 Add metadata sidebar showing file details and tags
+- [x] 6.5 Implement left/right navigation with arrow buttons and keyboard shortcuts
+- [x] 6.6 Add close functionality (X button, Escape key, backdrop click)
+- [x] 6.7 Add loading/error states for missing or corrupted files
 - [ ] 6.8 Test keyboard navigation and accessibility (focus trap, ARIA labels)
 
 ## 7. Frontend: Manual Tag Management UI
-- [ ] 7.1 Create `TagInput.tsx` component with autocomplete dropdown
-- [ ] 7.2 Implement `useAddTag()` and `useRemoveTag()` mutation hooks
-- [ ] 7.3 Implement `useSearchTags(prefix)` query hook for autocomplete
-- [ ] 7.4 Add tag input to ImageViewer metadata sidebar
-- [ ] 7.5 Add tag removal (X button) functionality in tag list
-- [ ] 7.6 Implement tag type selection dropdown for new tags
-- [ ] 7.7 Invalidate tag/file queries after tag mutations
+- [x] 7.1 Create `TagInput.tsx` component with autocomplete dropdown
+- [x] 7.2 Implement `useAddTag()` and `useRemoveTag()` mutation hooks
+- [x] 7.3 Implement `useSearchTags(prefix)` query hook for autocomplete
+- [x] 7.4 Add tag input to ImageViewer metadata sidebar
+- [x] 7.5 Add tag removal (X button) functionality in tag list
+- [x] 7.6 Implement tag type selection dropdown for new tags
+- [x] 7.7 Invalidate tag/file queries after tag mutations
 - [ ] 7.8 Test tag input with special characters and long names
 
 ## 8. Frontend: Batch Tag Editing
-- [ ] 8.1 Add selection state to ImageGrid component (Ctrl/Cmd+Click, Shift+Click)
-- [ ] 8.2 Create visual selection indicator (border, checkmark overlay)
-- [ ] 8.3 Create `BatchTagEditor.tsx` toolbar component
-- [ ] 8.4 Show common tags across selected files
-- [ ] 8.5 Implement `useBatchAddTags()` and `useBatchRemoveTags()` mutation hooks
-- [ ] 8.6 Add confirmation dialog for batch tag removal
-- [ ] 8.7 Implement "Clear Selection" functionality
+- [x] 8.1 Add selection state to ImageGrid component (Ctrl/Cmd+Click, Shift+Click)
+- [x] 8.2 Create visual selection indicator (border, checkmark overlay)
+- [x] 8.3 Create `BatchTagEditor.tsx` toolbar component
+- [x] 8.4 Show common tags across selected files
+- [x] 8.5 Implement `useBatchAddTags()` and `useBatchRemoveTags()` mutation hooks
+- [x] 8.6 Add confirmation dialog for batch tag removal
+- [x] 8.7 Implement "Clear Selection" functionality
 - [ ] 8.8 Test batch operations with large selections (100+ files)
 
 ## 8.5. Frontend: Manual AI Tagging UI
-- [ ] 8.5.1 Add "Run AI Tagging" button to BatchTagEditor toolbar
-- [ ] 8.5.2 Implement `useRunAITagging(file_hash)` and `useBatchAITagging(file_hashes[])` mutation hooks
-- [ ] 8.5.3 Add confirmation dialog for batch AI tagging with warning about keeping existing tags
-- [ ] 8.5.4 Add "Run AI Tagging" button to ImageViewer sidebar
-- [ ] 8.5.5 Implement loading state for AI tagging button in lightbox
-- [ ] 8.5.6 Disable "Run AI Tagging" button if file already has AI-generated tags (check tag source)
-- [ ] 8.5.7 Listen for `ai_tagging_progress` events and update UI progress indicators
-- [ ] 8.5.8 Show per-file AI tagging progress in notification center for batch operations
+- [x] 8.5.1 Add "Run AI Tagging" button to BatchTagEditor toolbar
+- [x] 8.5.2 Implement `useRunAITagging(file_hash)` and `useBatchAITagging(file_hashes[])` mutation hooks
+- [x] 8.5.3 Add confirmation dialog for batch AI tagging with warning about keeping existing tags
+- [x] 8.5.4 Add "Run AI Tagging" button to ImageViewer sidebar
+- [x] 8.5.5 Implement loading state for AI tagging button in lightbox
+- [x] 8.5.6 Disable "Run AI Tagging" button if file already has AI-generated tags (check tag source)
+- [x] 8.5.7 Listen for `ai_tagging_progress` events and update UI progress indicators
+- [x] 8.5.8 Show per-file AI tagging progress in notification center for batch operations
 - [ ] 8.5.9 Test manual AI tagging on single file and batch selections (10+ files)
 
 ## 9. Frontend: Import-Time Tagging
-- [ ] 9.1 Add tag input field to ImportButton dialog
-- [ ] 9.2 Display selected tags as removable chips/badges
-- [ ] 9.3 Update `useImportFiles()` hook to accept `tagNames` parameter
-- [ ] 9.4 Pass tag names to backend `import_file()` command
-- [ ] 9.5 Show applied tags in success toast notification
-- [ ] 9.6 Clear tag input after import completes
+- [x] 9.1 Add tag input field to ImportButton dialog (via ImportDialog component)
+- [x] 9.2 Display selected tags as removable chips/badges (via TagInput component)
+- [x] 9.3 Update `useImportFiles()` hook to accept `tagNames` parameter
+- [x] 9.4 Pass tag names to backend `import_file()` command
+- [x] 9.5 Show applied tags in success toast notification
+- [x] 9.6 Clear tag input after import completes
 - [ ] 9.7 Test import with tags on batch imports (20+ files)
 
 ## 10. Frontend: Progress Tracking Improvements
