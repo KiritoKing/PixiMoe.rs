@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE Files SET is_missing = 1 WHERE file_hash = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "10167887a4bfc3a9c6b5c959f78ccdb2079b9a3f293157c15b4d4ccd5c68099b"
+}

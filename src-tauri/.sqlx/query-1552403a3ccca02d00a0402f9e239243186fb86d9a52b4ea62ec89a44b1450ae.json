@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO Tags (name, type)\n                VALUES (?, 'general')\n                ON CONFLICT(name) DO UPDATE SET name=name\n                RETURNING tag_id\n                ",
+  "describe": {
+    "columns": [
+      {
+        "name": "tag_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1552403a3ccca02d00a0402f9e239243186fb86d9a52b4ea62ec89a44b1450ae"
+}

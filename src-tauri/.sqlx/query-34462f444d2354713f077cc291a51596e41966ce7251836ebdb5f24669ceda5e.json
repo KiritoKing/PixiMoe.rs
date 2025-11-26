@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT t.tag_id, t.name, t.type,\n               COUNT(ft.file_hash) as \"file_count: i64\"\n        FROM Tags t\n        LEFT JOIN FileTags ft ON t.tag_id = ft.tag_id\n        GROUP BY t.tag_id\n        ORDER BY t.name ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "tag_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "type",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_count: i64",
+        "ordinal": 3,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "34462f444d2354713f077cc291a51596e41966ce7251836ebdb5f24669ceda5e"
+}

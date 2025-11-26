@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT file_hash, original_path, file_size_bytes, file_last_modified, width, height,\n               date_imported, is_missing\n        FROM Files\n        WHERE is_missing = 0\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "file_hash",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "original_path",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_size_bytes",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "file_last_modified",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "width",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "height",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "date_imported",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "is_missing",
+        "ordinal": 7,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "43710a561a3d6f483f9a4bb5eb4396b0f01fedf9db76ed2d257a26879cc8a700"
+}
