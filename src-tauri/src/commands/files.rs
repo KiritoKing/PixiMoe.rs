@@ -1116,15 +1116,15 @@ pub async fn delete_file(
     .ok_or_else(|| AppError::Custom(format!("File not found: {}", file_hash)))?;
 
     // Delete from database (this will cascade delete file_tags associations)
-    let result = sqlx::query!(
-        "DELETE FROM Files WHERE file_hash = ?",
-        file_hash
-    )
-    .execute(pool.inner())
-    .await?;
+    let result = sqlx::query!("DELETE FROM Files WHERE file_hash = ?", file_hash)
+        .execute(pool.inner())
+        .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::Custom(format!("Failed to delete file: {}", file_hash)));
+        return Err(AppError::Custom(format!(
+            "Failed to delete file: {}",
+            file_hash
+        )));
     }
 
     // Delete thumbnail file if it exists
@@ -1169,12 +1169,9 @@ pub async fn delete_files_batch(
 
         if let Some(file) = file {
             // Delete from database (this will cascade delete file_tags associations)
-            let result = sqlx::query!(
-                "DELETE FROM Files WHERE file_hash = ?",
-                file_hash
-            )
-            .execute(pool.inner())
-            .await?;
+            let result = sqlx::query!("DELETE FROM Files WHERE file_hash = ?", file_hash)
+                .execute(pool.inner())
+                .await?;
 
             if result.rows_affected() > 0 {
                 deleted_count += 1;

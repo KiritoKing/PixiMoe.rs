@@ -17,4 +17,52 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
 
-@AGENTS.md; Refer to ./AGENTS.md for more details of this project.
+# Reference
+
+This is a tauri app project, whose frontend is built with vite.
+
+Dev command is `pnpm tauri dev`.
+
+More detail information like debugging for project reference to `@/openspec/projeect.md`.
+
+# Dev GuideLine
+
+## Always Check Code After Finishing A Change
+
+Use the following commands to check code quality after each change submitted and before you show it to user.
+
+| Command | PWD | Usage |
+| --- |:---:| ---:|
+| `pnpm tsc --noEmit` | `./` | Type checking for Typescript files |
+| `pnpm biome check --write ./src` | `./` | Lint and format frontend code |
+| `cargo check` | `./src-tauri` | Check rust code |
+ 
+
+## shadcn/ui Usage Rules
+
+**MANDATORY workflow for shadcn/ui components:**
+
+1. **Search with shadcn MCP** → Find component name
+2. **Query API with Context7 MCP** → Get current props/variants
+3. **Install if needed (use Non-interactive mode)** → `echo "N" | pnpm dlx shadcn@latest add <component> --yes`
+4. **Import directly** → `import { Button } from "@/components/ui/button"`
+
+**Common components:** Button, Card, Dialog, Input, Badge, Popover, Progress, ScrollArea, Skeleton
+
+## Import Rules - No Barrel Files
+
+**MANDATORY: Direct imports only. No barrel files.**
+
+❌ Forbidden:
+```typescript
+// src/components/index.ts - DON'T CREATE
+export { ImageGrid, ImageCard } from "./gallery"
+```
+
+✅ Required:
+```typescript
+import { ImageGrid } from "@/components/gallery/ImageGrid"
+import { ImageCard } from "@/components/gallery/ImageCard"
+```
+
+**Why:** Build performance, tree shaking, code clarity, refactoring safety, IDE performance.

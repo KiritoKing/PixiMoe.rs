@@ -27,6 +27,17 @@ More detail information like debugging for project reference to `@/openspec/proj
 
 # Dev GuideLine
 
+## Always Check Code After Finishing A Change
+
+Use the following commands to check code quality after each change submitted and before you show it to user.
+
+| Command | PWD | Usage |
+| --- |:---:| ---:|
+| `pnpm tsc --noEmit` | `./` | Type checking for Typescript files |
+| `pnpm biome check --write ./src` | `./` | Lint and format frontend code |
+| `cargo check` | `./src-tauri` | Check rust code |
+ 
+
 ## shadcn/ui Usage Rules
 
 **MANDATORY workflow for shadcn/ui components:**
