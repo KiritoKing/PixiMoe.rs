@@ -1,10 +1,10 @@
 [package]
-name = "tauri-app"
+name = "piximoe-rs"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "PixiMoe.rs - AI-powered kawaii anime gallery manager with character recognition and Danbooru-style tagging, built with Rust and Tauri"
+authors = ["PixiMoe Team"]
 edition = "2021"
-default-run = "tauri-app"
+default-run = "piximoe-rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -12,7 +12,7 @@ default-run = "tauri-app"
 # The `_lib` suffix may seem redundant but it is necessaryreload
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "tauri_app_lib"
+name = "piximoe_rs_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
