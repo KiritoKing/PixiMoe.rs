@@ -1,0 +1,221 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # 代码质量检查（在所有构建之前运行）
+  quality-check:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript type check
+        run: pnpm type-check
+
+      - name: Biome lint
+        run: pnpm lint
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust format check
+        working-directory: src-tauri
+        run: cargo fmt --all -- --check
+
+      - name: Rust clippy
+        working-directory: src-tauri
+        run: cargo clippy -- -D warnings
+
+  # 构建所有平台和架构
+  build:
+    name: Build (${{ matrix.os }}-${{ matrix.arch }})
+    needs: quality-check
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            target: x86_64-unknown-linux-gnu
+            artifact-name: piximoe-rs-linux-x86_64
+          - os: ubuntu-latest
+            arch: aarch64
+            target: aarch64-unknown-linux-gnu
+            artifact-name: piximoe-rs-linux-aarch64
+          - os: windows-latest
+            arch: x86_64
+            target: x86_64-pc-windows-msvc
+            artifact-name: piximoe-rs-windows-x86_64
+          - os: macos-latest
+            arch: x86_64
+            target: x86_64-apple-darwin
+            artifact-name: piximoe-rs-macos-x86_64
+          - os: macos-latest
+            arch: aarch64
+            target: aarch64-apple-darwin
+            artifact-name: piximoe-rs-macos-aarch64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            src-tauri/target/
+          key: ${{ runner.os }}-rust-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-rust-${{ matrix.target }}-
+
+      - name: Install cross-compilation dependencies (Linux ARM64)
+        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'aarch64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+
+      - name: Build Tauri application
+        run: pnpm tauri build --target ${{ matrix.target }}
+        env:
+          # Set environment variables for cross-compilation if needed
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
+          AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
+
+      - name: Find and package artifacts
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            # Windows: find .msi installer
+            ARTIFACT_PATH=$(find src-tauri/target/${{ matrix.target }}/release/bundle/msi -name "*.msi" 2>/dev/null | head -1)
+            if [ -z "$ARTIFACT_PATH" ]; then
+              # Fallback to .exe if .msi not found
+              ARTIFACT_PATH=$(find src-tauri/target/${{ matrix.target }}/release -name "*.exe" -not -path "*/bundle/*" 2>/dev/null | head -1)
+            fi
+            ARTIFACT_NAME="${{ matrix.artifact-name }}.${ARTIFACT_PATH##*.}"
+          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+            # macOS: find .dmg installer
+            ARTIFACT_PATH=$(find src-tauri/target/${{ matrix.target }}/release/bundle/dmg -name "*.dmg" 2>/dev/null | head -1)
+            ARTIFACT_NAME="${{ matrix.artifact-name }}.dmg"
+          else
+            # Linux: find .deb or .AppImage
+            ARTIFACT_PATH=$(find src-tauri/target/${{ matrix.target }}/release/bundle -name "*.deb" -o -name "*.AppImage" 2>/dev/null | head -1)
+            ARTIFACT_NAME="${{ matrix.artifact-name }}.${ARTIFACT_PATH##*.}"
+          fi
+          
+          if [ -z "$ARTIFACT_PATH" ] || [ ! -f "$ARTIFACT_PATH" ]; then
+            echo "Error: Build artifact not found for ${{ matrix.os }}-${{ matrix.arch }}"
+            echo "Searched in: src-tauri/target/${{ matrix.target }}/release"
+            find src-tauri/target/${{ matrix.target }}/release -type f 2>/dev/null || true
+            exit 1
+          fi
+          
+          echo "ARTIFACT_PATH=$ARTIFACT_PATH" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
+          echo "Found artifact: $ARTIFACT_PATH"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ env.ARTIFACT_PATH }}
+          retention-days: 90
+
+  # 发布到 GitHub Releases（仅当 push tag 或创建 release 时）
+  release:
+    name: Create Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'release' && github.event.action == 'published')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Determine release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" == "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          files: artifacts/**/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
