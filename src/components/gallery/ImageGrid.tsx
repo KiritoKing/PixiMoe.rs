@@ -2,12 +2,14 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { RefreshCw, ImageIcon } from "lucide-react";
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
-import { useFiles } from "@/lib/hooks";
+import { useFiles, useDeleteFile, useDeleteFilesBatch } from "@/lib/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import type { FileRecord, ProgressEvent } from "@/types";
 import { ImageViewer } from "./ImageViewer";
 import { BatchTagEditor } from "@/components/tags/BatchTagEditor";
+import { BatchOperationsBar } from "./BatchOperationsBar";
+import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { ImageCard } from "./ImageCard";
 
 interface ImageGridProps {
@@ -37,6 +39,9 @@ type ThumbnailSize = "small" | "medium" | "large";
 
 export function ImageGrid({ files: customFiles, isLoading: customLoading }: ImageGridProps) {
   const { data: fetchedFiles, isLoading: fetchLoading } = useFiles();
+  const deleteFileMutation = useDeleteFile();
+  const deleteFilesBatchMutation = useDeleteFilesBatch();
+
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
   const [selectedHashes, setSelectedHashes] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
@@ -46,7 +51,10 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
   const [thumbnailSize, setThumbnailSize] = useState<ThumbnailSize>("small");
-  
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteDialogIsBatch, setDeleteDialogIsBatch] = useState(false);
+  const [deleteDialogFileCount, setDeleteDialogFileCount] = useState(1);
+
   const files = customFiles ?? fetchedFiles ?? [];
   const isLoading = customLoading ?? fetchLoading;
 
@@ -342,6 +350,108 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
     setTimeout(() => setIsRefreshing(false), 600);
   }, [files]);
 
+  // Batch operation handlers
+  const handleSelectAll = useCallback(() => {
+    const allFileHashes = new Set(files.map((file) => file.file_hash));
+    setSelectedHashes(allFileHashes);
+    setSelectionMode(true);
+  }, [files]);
+
+  const handleBatchDelete = useCallback(() => {
+    if (selectedHashes.size === 0) return;
+
+    setDeleteDialogIsBatch(true);
+    setDeleteDialogFileCount(selectedHashes.size);
+    setDeleteDialogOpen(true);
+  }, [selectedHashes]);
+
+  const handleBatchEditTags = useCallback(() => {
+    // This will be handled by the existing BatchTagEditor component
+    // The BatchTagEditor is already shown when selectedHashes.size > 0
+  }, []);
+
+  const handleSingleDelete = useCallback((fileHash: string) => {
+    // Store file hash for deletion after confirmation
+    setDeleteDialogIsBatch(false);
+    setDeleteDialogFileCount(1);
+    setDeleteDialogOpen(true);
+    // We'll need to track which file to delete - let's add a ref for this
+    (window as any).pendingDeleteFileHash = fileHash;
+  }, []);
+
+  const handleSingleEditTags = useCallback((fileHash: string) => {
+    // Select the file and show the batch tag editor
+    setSelectedHashes(new Set([fileHash]));
+    setSelectionMode(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback((deleteFromDisk: boolean) => {
+    if (deleteDialogIsBatch) {
+      // Batch delete
+      deleteFilesBatchMutation.mutate({
+        fileHashes: Array.from(selectedHashes),
+        deleteFromDisk
+      });
+      clearSelection();
+    } else {
+      // Single file delete
+      const pendingFileHash = (window as any).pendingDeleteFileHash;
+      if (pendingFileHash) {
+        deleteFileMutation.mutate({
+          fileHash: pendingFileHash,
+          deleteFromDisk
+        });
+        delete (window as any).pendingDeleteFileHash; // Clean up
+      }
+    }
+  }, [deleteDialogIsBatch, selectedHashes, deleteFilesBatchMutation, deleteFileMutation, clearSelection]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input/textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Delete key - delete selected files
+      if (e.key === "Delete" && selectedHashes.size > 0) {
+        handleBatchDelete();
+      }
+
+      // Escape key - clear selection
+      if (e.key === "Escape") {
+        if (selectedHashes.size > 0) {
+          clearSelection();
+        }
+        if (selectedFile) {
+          setSelectedFile(null);
+        }
+        if (deleteDialogOpen) {
+          setDeleteDialogOpen(false);
+        }
+      }
+
+      // Ctrl+A / Cmd+A - select all files
+      if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+        e.preventDefault();
+        handleSelectAll();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    selectedHashes,
+    selectedFile,
+    deleteDialogOpen,
+    clearSelection,
+    handleSelectAll,
+    handleBatchDelete,
+  ]);
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 p-4">
@@ -404,7 +514,7 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
               </Button>
             </div>
           </div>
-          
+
           {/* Refresh button */}
           <Button
             variant="outline"
@@ -418,7 +528,20 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
           </Button>
         </div>
       )}
-      
+
+      {/* Batch Operations Bar */}
+      {selectedHashes.size > 0 && (
+        <BatchOperationsBar
+          selectedCount={selectedHashes.size}
+          selectedHashes={selectedHashes}
+          filesCount={files.length}
+          onClearSelection={clearSelection}
+          onSelectAll={handleSelectAll}
+          onDelete={handleBatchDelete}
+          onEditTags={handleBatchEditTags}
+        />
+      )}
+
       {/* Virtual scroll container */}
       <div
         ref={parentRef}
@@ -481,6 +604,8 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
                         isLoadingThumbnail={thumbnailLoadingHashes.has(file.file_hash)}
                         thumbnailTimestamp={thumbnailTimestamps.get(file.file_hash)}
                         onClick={(e) => handleCardClick(file, e)}
+                        onDelete={handleSingleDelete}
+                        onEditTags={handleSingleEditTags}
                       />
                     </div>
                   ))}
@@ -505,6 +630,15 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
           onClearSelection={clearSelection}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        fileCount={deleteDialogFileCount}
+        isBatch={deleteDialogIsBatch}
+      />
     </div>
   );
 }

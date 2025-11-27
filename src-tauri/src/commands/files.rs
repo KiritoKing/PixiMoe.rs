@@ -1095,3 +1095,133 @@ pub struct TagPredictionResult {
     pub name: String,
     pub confidence: f32,
 }
+
+/// Delete a single file from the database and optionally the filesystem
+/// This will cascade delete all file_tags associations due to foreign key constraints
+#[tauri::command]
+pub async fn delete_file(
+    app: AppHandle,
+    pool: tauri::State<'_, SqlitePool>,
+    file_hash: String,
+    delete_from_disk: bool,
+) -> Result<(), AppError> {
+    // Get file info before deletion
+    let file = sqlx::query_as!(
+        FileRecord,
+        "SELECT * FROM Files WHERE file_hash = ?",
+        file_hash
+    )
+    .fetch_optional(pool.inner())
+    .await?
+    .ok_or_else(|| AppError::Custom(format!("File not found: {}", file_hash)))?;
+
+    // Delete from database (this will cascade delete file_tags associations)
+    let result = sqlx::query!(
+        "DELETE FROM Files WHERE file_hash = ?",
+        file_hash
+    )
+    .execute(pool.inner())
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::Custom(format!("Failed to delete file: {}", file_hash)));
+    }
+
+    // Delete thumbnail file if it exists
+    let thumbnail_dir = get_thumbnail_dir(&app)?;
+    let thumbnail_path = thumbnail_dir.join(format!("{}.webp", file_hash));
+    if thumbnail_path.exists() {
+        fs::remove_file(&thumbnail_path)?;
+    }
+
+    // Optionally delete original file from disk
+    if delete_from_disk {
+        let original_path = PathBuf::from(&file.original_path);
+        if original_path.exists() {
+            fs::remove_file(&original_path)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Delete multiple files in batch
+/// Returns the number of successfully deleted files
+#[tauri::command]
+pub async fn delete_files_batch(
+    app: AppHandle,
+    pool: tauri::State<'_, SqlitePool>,
+    file_hashes: Vec<String>,
+    delete_from_disk: bool,
+) -> Result<usize, AppError> {
+    let mut deleted_count = 0;
+    let total = file_hashes.len();
+
+    for (index, file_hash) in file_hashes.iter().enumerate() {
+        // Get file info before deletion
+        let file = sqlx::query_as!(
+            FileRecord,
+            "SELECT * FROM Files WHERE file_hash = ?",
+            file_hash
+        )
+        .fetch_optional(pool.inner())
+        .await?;
+
+        if let Some(file) = file {
+            // Delete from database (this will cascade delete file_tags associations)
+            let result = sqlx::query!(
+                "DELETE FROM Files WHERE file_hash = ?",
+                file_hash
+            )
+            .execute(pool.inner())
+            .await?;
+
+            if result.rows_affected() > 0 {
+                deleted_count += 1;
+
+                // Delete thumbnail file if it exists
+                let thumbnail_dir = get_thumbnail_dir(&app)?;
+                let thumbnail_path = thumbnail_dir.join(format!("{}.webp", file_hash));
+                if thumbnail_path.exists() {
+                    let _ = fs::remove_file(&thumbnail_path); // Ignore thumbnail deletion errors
+                }
+
+                // Optionally delete original file from disk
+                if delete_from_disk {
+                    let original_path = PathBuf::from(&file.original_path);
+                    if original_path.exists() {
+                        let _ = fs::remove_file(&original_path); // Ignore file deletion errors
+                    }
+                }
+            }
+
+            // Emit progress for batch deletion
+            app.emit(
+                "delete_progress",
+                ProgressEvent {
+                    stage: "deleting".to_string(),
+                    message: format!("Deleted {} of {} files", index + 1, total),
+                    file_hash: Some(file_hash.clone()),
+                    current: Some(index + 1),
+                    total: Some(total),
+                },
+            )
+            .ok();
+        }
+    }
+
+    // Emit complete event
+    app.emit(
+        "delete_progress",
+        ProgressEvent {
+            stage: "complete".to_string(),
+            message: format!("Batch deletion complete: {} files deleted", deleted_count),
+            file_hash: None,
+            current: Some(deleted_count),
+            total: Some(total),
+        },
+    )
+    .ok();
+
+    Ok(deleted_count)
+}

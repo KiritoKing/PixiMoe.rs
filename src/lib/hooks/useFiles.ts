@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
 import type { FileRecord } from "@/types";
 
@@ -28,5 +28,43 @@ export function useFileByHash(fileHash: string | null) {
       return file;
     },
     enabled: !!fileHash,
+  });
+}
+
+export function useDeleteFile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ fileHash, deleteFromDisk = false }: { fileHash: string; deleteFromDisk?: boolean }) => {
+      await invoke("delete_file", {
+        fileHash,
+        deleteFromDisk
+      });
+    },
+    onSuccess: () => {
+      // Invalidate files query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+    },
+  });
+}
+
+export function useDeleteFilesBatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ fileHashes, deleteFromDisk = false }: {
+      fileHashes: string[];
+      deleteFromDisk?: boolean
+    }) => {
+      const deletedCount = await invoke<number>("delete_files_batch", {
+        fileHashes,
+        deleteFromDisk
+      });
+      return deletedCount;
+    },
+    onSuccess: () => {
+      // Invalidate files query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+    },
   });
 }

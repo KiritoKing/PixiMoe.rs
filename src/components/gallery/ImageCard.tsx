@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Check, AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ImageContextMenu } from "./ImageContextMenu";
 import type { FileRecord } from "@/types";
 
 interface ImageCardProps {
@@ -10,13 +11,25 @@ interface ImageCardProps {
   isLoadingThumbnail: boolean;
   thumbnailTimestamp?: number;
   onClick: (e: React.MouseEvent) => void;
+  onDelete?: (fileHash: string) => void;
+  onEditTags?: (fileHash: string) => void;
 }
 
-export function ImageCard({ file, isSelected, isLoadingThumbnail: _isLoadingThumbnail, thumbnailTimestamp, onClick }: ImageCardProps) {
+export function ImageCard({
+  file,
+  isSelected,
+  isLoadingThumbnail: _isLoadingThumbnail,
+  thumbnailTimestamp,
+  onClick,
+  onDelete,
+  onEditTags
+}: ImageCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
   const [useOriginal, setUseOriginal] = useState(false);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   
   // Use direct app-asset:// protocol URL with cache-busting timestamp
   const thumbnailUrl = `app-asset://localhost/thumbnails/${file.file_hash}.webp${thumbnailTimestamp ? `?t=${thumbnailTimestamp}` : ''}`;
@@ -45,6 +58,23 @@ export function ImageCard({ file, isSelected, isLoadingThumbnail: _isLoadingThum
     setHasAttemptedLoad(false);
   }, [imageUrl]);
 
+  // Handle right-click context menu
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuPosition({ x: e.clientX, y: e.clientY });
+    setContextMenuOpen(true);
+  };
+
+  // Handle context menu actions
+  const handleDelete = () => {
+    onDelete?.(file.file_hash);
+  };
+
+  const handleEditTags = () => {
+    onEditTags?.(file.file_hash);
+  };
+
   // Determine if we should show loading or error
   // Show loading only when:
   // 1. Image is actively loading (hasAttemptedLoad but not loaded/errored)
@@ -56,14 +86,16 @@ export function ImageCard({ file, isSelected, isLoadingThumbnail: _isLoadingThum
   const showError = imageError && hasAttemptedLoad && useOriginal; // Only show error if original also failed
 
   return (
-    <Card 
-      onClick={onClick}
-      className={`group relative aspect-square overflow-hidden cursor-pointer transition-all ${
-        isSelected 
-          ? "ring-4 ring-blue-500" 
-          : "hover:ring-2 hover:ring-blue-500"
-      }`}
-    >
+    <>
+      <Card
+        onClick={onClick}
+        onContextMenu={handleContextMenu}
+        className={`group relative aspect-square overflow-hidden cursor-pointer transition-all ${
+          isSelected
+            ? "ring-4 ring-blue-500"
+            : "hover:ring-2 hover:ring-blue-500"
+        }`}
+      >
       {/* Selection indicator */}
       {isSelected && (
         <div className="absolute top-2 right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center z-10">
@@ -140,6 +172,19 @@ export function ImageCard({ file, isSelected, isLoadingThumbnail: _isLoadingThum
         </div>
       </div>
     </Card>
+
+    {/* Context Menu */}
+    {onDelete && onEditTags && (
+      <ImageContextMenu
+        file={file}
+        isOpen={contextMenuOpen}
+        position={contextMenuPosition}
+        onClose={() => setContextMenuOpen(false)}
+        onDelete={handleDelete}
+        onEditTags={handleEditTags}
+      />
+    )}
+    </>
   );
 }
 
