@@ -135,6 +135,32 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-rust-${{ matrix.target }}-
 
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libglib2.0-dev \
+            libgobject-2.0-dev \
+            pkg-config \
+            libxdo-dev \
+            libx11-dev \
+            libxcomposite-dev \
+            libxdamage-dev \
+            libxfixes-dev \
+            libxrandr-dev \
+            libxss1 \
+            libasound2-dev
+
       - name: Install cross-compilation dependencies (Linux ARM64)
         if: matrix.os == 'ubuntu-latest' && matrix.arch == 'aarch64'
         run: |
