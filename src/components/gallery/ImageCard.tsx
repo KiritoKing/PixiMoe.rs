@@ -45,9 +45,7 @@ export function ImageCard({
 	// Reset image state when thumbnail updates
 	useEffect(() => {
 		if (thumbnailTimestamp) {
-			console.log(
-				`Thumbnail timestamp updated for ${file.file_hash}, resetting states`,
-			);
+			console.log(`Thumbnail timestamp updated for ${file.file_hash}, resetting states`);
 			setImageLoaded(false);
 			setImageError(false);
 			setHasAttemptedLoad(false);
@@ -96,9 +94,7 @@ export function ImageCard({
 				onClick={onClick}
 				onContextMenu={handleContextMenu}
 				className={`group relative aspect-square overflow-hidden cursor-pointer transition-all ${
-					isSelected
-						? "ring-4 ring-blue-500"
-						: "hover:ring-2 hover:ring-blue-500"
+					isSelected ? "ring-4 ring-blue-500" : "hover:ring-2 hover:ring-blue-500"
 				}`}
 			>
 				{/* Selection indicator */}
@@ -138,7 +134,7 @@ export function ImageCard({
 					onLoadStart={() => {
 						console.log(
 							`Starting to load ${useOriginal ? "original" : "thumbnail"}:`,
-							imageUrl,
+							imageUrl
 						);
 						setHasAttemptedLoad(true);
 					}}
@@ -146,7 +142,7 @@ export function ImageCard({
 						console.error(
 							`Failed to load ${useOriginal ? "original" : "thumbnail"}:`,
 							imageUrl,
-							e,
+							e
 						);
 						if (!useOriginal) {
 							// Thumbnail failed, fallback to original
@@ -165,7 +161,7 @@ export function ImageCard({
 					onLoad={() => {
 						console.log(
 							`${useOriginal ? "Original" : "Thumbnail"} loaded successfully:`,
-							imageUrl,
+							imageUrl
 						);
 						setImageLoaded(true);
 						setImageError(false);

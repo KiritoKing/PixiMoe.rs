@@ -29,24 +29,15 @@ export function useImportFiles() {
 				"enableAITagging:",
 				enableAITagging,
 				"from options:",
-				options,
+				options
 			);
 
 			// Import each file
 			const results: ImportResult[] = [];
 			for (const path of filePaths) {
-				console.log(
-					"[Import] Calling import_file with enableAITagging:",
-					enableAITagging,
-				);
-				const tagsToPass =
-					tagNames && tagNames.length > 0 ? tagNames : undefined;
-				console.log(
-					"[Import] Calling import_file for",
-					path,
-					"with tagNames:",
-					tagsToPass,
-				);
+				console.log("[Import] Calling import_file with enableAITagging:", enableAITagging);
+				const tagsToPass = tagNames && tagNames.length > 0 ? tagNames : undefined;
+				console.log("[Import] Calling import_file for", path, "with tagNames:", tagsToPass);
 				const result = await invoke<ImportResult>("import_file", {
 					path,
 					tagNames: tagsToPass,
@@ -56,9 +47,7 @@ export function useImportFiles() {
 			}
 
 			// Collect file hashes of successfully imported files (non-duplicates)
-			const importedHashes = results
-				.filter((r) => !r.is_duplicate)
-				.map((r) => r.file_hash);
+			const importedHashes = results.filter((r) => !r.is_duplicate).map((r) => r.file_hash);
 
 			return {
 				results,

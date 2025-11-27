@@ -17,9 +17,7 @@ function App() {
 	// Listen for thumbnail regeneration events
 	useEffect(() => {
 		const unlisten = listen<number>("thumbnails_regenerated", (event) => {
-			console.log(
-				`${event.payload} thumbnails were regenerated, refreshing...`,
-			);
+			console.log(`${event.payload} thumbnails were regenerated, refreshing...`);
 			// Invalidate all file queries to trigger refetch
 			queryClient.invalidateQueries({ queryKey: ["files"] });
 		});
@@ -47,8 +45,7 @@ function App() {
 
 	// Use search if tags are selected, otherwise get all files
 	const { data: allFiles, isLoading: allLoading } = useFiles();
-	const { data: filteredFiles, isLoading: searchLoading } =
-		useSearchFiles(selectedTagIds);
+	const { data: filteredFiles, isLoading: searchLoading } = useSearchFiles(selectedTagIds);
 
 	const files = selectedTagIds.length > 0 ? filteredFiles : allFiles;
 	const isLoading = selectedTagIds.length > 0 ? searchLoading : allLoading;

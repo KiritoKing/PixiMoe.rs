@@ -1,11 +1,7 @@
 import { Tag, Wand2, X } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import {
-	useBatchAddTags,
-	useBatchAITagging,
-	useBatchRemoveTag,
-} from "@/lib/hooks";
+import { useBatchAddTags, useBatchAITagging, useBatchRemoveTag } from "@/lib/hooks";
 import { TagInput } from "./TagInput";
 
 interface BatchTagEditorProps {
@@ -20,9 +16,7 @@ export function BatchTagEditor({
 	onClearSelection,
 }: BatchTagEditorProps) {
 	const [tagsToAdd, setTagsToAdd] = useState<string[]>([]);
-	const [showRemoveConfirm, setShowRemoveConfirm] = useState<number | null>(
-		null,
-	);
+	const [showRemoveConfirm, setShowRemoveConfirm] = useState<number | null>(null);
 	const [showAIConfirm, setShowAIConfirm] = useState(false);
 
 	const batchAddMutation = useBatchAddTags();
@@ -37,9 +31,7 @@ export function BatchTagEditor({
 				fileHashes: selectedHashes,
 				tagNames: tagsToAdd,
 			});
-			toast.success(
-				`Added ${tagsToAdd.length} tag(s) to ${selectedHashes.length} file(s)`,
-			);
+			toast.success(`Added ${tagsToAdd.length} tag(s) to ${selectedHashes.length} file(s)`);
 			setTagsToAdd([]);
 		} catch (error) {
 			toast.error(`Failed to add tags: ${error}`);
@@ -62,9 +54,7 @@ export function BatchTagEditor({
 	const handleRunAI = async () => {
 		try {
 			await batchAIMutation.mutateAsync(selectedHashes);
-			toast.success(
-				`AI tagging completed for ${selectedHashes.length} file(s)`,
-			);
+			toast.success(`AI tagging completed for ${selectedHashes.length} file(s)`);
 			setShowAIConfirm(false);
 		} catch (error) {
 			toast.error(`AI tagging failed: ${error}`);
@@ -157,8 +147,8 @@ export function BatchTagEditor({
 					<div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-md">
 						<h3 className="text-lg font-semibold mb-2">Remove Tag?</h3>
 						<p className="text-gray-600 dark:text-gray-400 mb-4">
-							This will remove the tag from {selectedHashes.length} selected
-							file(s). This action cannot be undone.
+							This will remove the tag from {selectedHashes.length} selected file(s).
+							This action cannot be undone.
 						</p>
 						<div className="flex gap-2 justify-end">
 							<button
@@ -186,8 +176,8 @@ export function BatchTagEditor({
 					<div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-md">
 						<h3 className="text-lg font-semibold mb-2">Run AI Tagging?</h3>
 						<p className="text-gray-600 dark:text-gray-400 mb-4">
-							This will run AI tagging on {selectedHashes.length} selected
-							file(s). This may take some time depending on the number of files.
+							This will run AI tagging on {selectedHashes.length} selected file(s).
+							This may take some time depending on the number of files.
 						</p>
 						<div className="flex gap-2 justify-end">
 							<button

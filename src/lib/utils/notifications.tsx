@@ -19,7 +19,7 @@ export function addNotification(
 	title: string,
 	message: string,
 	details?: string,
-	pinned = false,
+	pinned = false
 ) {
 	const { addNotification: add } = useNotifications.getState();
 	add({
@@ -40,7 +40,7 @@ export function createToastWithDetails(
 	title: string,
 	message: string,
 	details?: string,
-	pinned = false,
+	pinned = false
 ) {
 	// Add to notification center
 	addNotification(type, title, message, details, pinned);
@@ -58,8 +58,7 @@ export function createToastWithDetails(
 				border: `1px solid ${borderColorValue}`,
 				borderRadius: radius ? `calc(${radius} - 2px)` : "6px",
 				padding: "12px 16px",
-				boxShadow:
-					"0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+				boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
 				margin: "-8px -10px", // Offset default padding from react-hot-toast
 			}}
 			className="flex items-start gap-3"
@@ -109,16 +108,13 @@ export function createToastWithDetails(
 
 	// Check if dark mode is active
 	const isDark =
-		typeof document !== "undefined" &&
-		document.documentElement.classList.contains("dark");
+		typeof document !== "undefined" && document.documentElement.classList.contains("dark");
 
 	// Use solid background colors for better compatibility
 	// For dark mode: use dark background, for light mode: use light background
 	const backgroundColor = isDark ? "rgb(23, 23, 23)" : "rgb(255, 255, 255)";
 	const textColor = isDark ? "rgb(250, 250, 250)" : "rgb(23, 23, 23)";
-	const borderColorValue = isDark
-		? "rgba(255, 255, 255, 0.1)"
-		: "rgba(0, 0, 0, 0.1)";
+	const borderColorValue = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)";
 
 	const toastOptions = {
 		duration: type === "error" ? 5000 : 4000,

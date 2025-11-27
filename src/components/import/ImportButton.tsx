@@ -4,11 +4,7 @@ import { Loader2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useBatchAITagging, useImportFiles } from "@/lib/hooks";
 import { createToastWithDetails } from "@/lib/utils/notifications";
 import type { ProgressEvent } from "@/types";
@@ -16,11 +12,8 @@ import { ImportDialog } from "./ImportDialog";
 
 export function ImportButton() {
 	const [isImporting, setIsImporting] = useState(false);
-	const [importProgress, setImportProgress] = useState<ProgressEvent | null>(
-		null,
-	);
-	const [thumbnailProgress, setThumbnailProgress] =
-		useState<ProgressEvent | null>(null);
+	const [importProgress, setImportProgress] = useState<ProgressEvent | null>(null);
+	const [thumbnailProgress, setThumbnailProgress] = useState<ProgressEvent | null>(null);
 	const [aiProgress, setAiProgress] = useState<ProgressEvent | null>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
@@ -28,16 +21,16 @@ export function ImportButton() {
 	const batchAITaggingMutation = useBatchAITagging();
 
 	// Track thumbnail processing state
-	const [thumbnailProcessingHashes, setThumbnailProcessingHashes] = useState<
-		Set<string>
-	>(new Set());
+	const [thumbnailProcessingHashes, setThumbnailProcessingHashes] = useState<Set<string>>(
+		new Set()
+	);
 	const [thumbnailCompleteCount, setThumbnailCompleteCount] = useState(0);
 	const [thumbnailTotal, setThumbnailTotal] = useState(0);
 
 	// Track AI tagging processing state
-	const [aiTaggingProcessingHashes, setAiTaggingProcessingHashes] = useState<
-		Set<string>
-	>(new Set());
+	const [aiTaggingProcessingHashes, setAiTaggingProcessingHashes] = useState<Set<string>>(
+		new Set()
+	);
 	const [aiTaggingCompleteCount, setAiTaggingCompleteCount] = useState(0);
 	const [aiTaggingTotal, setAiTaggingTotal] = useState(0);
 
@@ -48,36 +41,30 @@ export function ImportButton() {
 		});
 
 		// Listen for thumbnail progress events
-		const unlistenThumbnail = listen<ProgressEvent>(
-			"thumbnail_progress",
-			(event) => {
-				setThumbnailProgress(event.payload);
-				const payload = event.payload;
+		const unlistenThumbnail = listen<ProgressEvent>("thumbnail_progress", (event) => {
+			setThumbnailProgress(event.payload);
+			const payload = event.payload;
 
-				if (payload.file_hash) {
-					setThumbnailProcessingHashes((prev) => {
-						const next = new Set(prev);
-						if (payload.stage === "generating") {
-							next.add(payload.file_hash);
-						} else if (
-							payload.stage === "complete" ||
-							payload.stage === "error"
-						) {
-							next.delete(payload.file_hash);
-							if (payload.stage === "complete") {
-								setThumbnailCompleteCount((count) => count + 1);
-							}
+			if (payload.file_hash) {
+				setThumbnailProcessingHashes((prev) => {
+					const next = new Set(prev);
+					if (payload.stage === "generating") {
+						next.add(payload.file_hash);
+					} else if (payload.stage === "complete" || payload.stage === "error") {
+						next.delete(payload.file_hash);
+						if (payload.stage === "complete") {
+							setThumbnailCompleteCount((count) => count + 1);
 						}
-						return next;
-					});
-				}
+					}
+					return next;
+				});
+			}
 
-				// Update total if provided
-				if (payload.total !== undefined) {
-					setThumbnailTotal(payload.total);
-				}
-			},
-		);
+			// Update total if provided
+			if (payload.total !== undefined) {
+				setThumbnailTotal(payload.total);
+			}
+		});
 
 		// Listen for AI tagging progress events
 		const unlistenAi = listen<ProgressEvent>("ai_tagging_progress", (event) => {
@@ -87,10 +74,7 @@ export function ImportButton() {
 			if (payload.file_hash) {
 				setAiTaggingProcessingHashes((prev) => {
 					const next = new Set(prev);
-					if (
-						payload.stage === "classifying" ||
-						payload.stage === "saving_tags"
-					) {
+					if (payload.stage === "classifying" || payload.stage === "saving_tags") {
 						next.add(payload.file_hash);
 					} else if (
 						payload.stage === "complete" ||
@@ -127,7 +111,7 @@ export function ImportButton() {
 					"success",
 					"AI 标签完成",
 					payload.message,
-					`文件哈希: ${payload.file_hash || "未知"}\n${payload.message}`,
+					`文件哈希: ${payload.file_hash || "未知"}\n${payload.message}`
 				);
 			} else if (payload.stage === "error") {
 				createToastWithDetails(
@@ -135,7 +119,7 @@ export function ImportButton() {
 					"error",
 					"AI 标签失败",
 					payload.message,
-					`文件哈希: ${payload.file_hash || "未知"}\n错误: ${payload.message}`,
+					`文件哈希: ${payload.file_hash || "未知"}\n错误: ${payload.message}`
 				);
 			}
 		});
@@ -209,7 +193,7 @@ export function ImportButton() {
 				console.log(
 					"[Import] Starting batch AI tagging for",
 					importedHashes.length,
-					"files",
+					"files"
 				);
 				setAiTaggingTotal(importedHashes.length);
 				// Start batch AI tagging asynchronously (don't await - let it run in background)
@@ -233,9 +217,7 @@ export function ImportButton() {
 					(appliedTags && appliedTags.length > 0
 						? `应用的标签: ${appliedTags.join(", ")}\n`
 						: "") +
-					(options.enableAITagging
-						? `AI 标签处理将在后台进行`
-						: `AI 标签已禁用`);
+					(options.enableAITagging ? `AI 标签处理将在后台进行` : `AI 标签已禁用`);
 				createToastWithDetails(toast, "success", "导入完成", message, details);
 			} else if (duplicates > 0) {
 				const message = `所有 ${duplicates} 个文件都是重复的，已跳过`;
@@ -263,8 +245,7 @@ export function ImportButton() {
 		importProgress !== null ||
 		(thumbnailProgress !== null && thumbnailProgress.stage === "generating") ||
 		(aiProgress !== null &&
-			(aiProgress.stage === "classifying" ||
-				aiProgress.stage === "saving_tags"));
+			(aiProgress.stage === "classifying" || aiProgress.stage === "saving_tags"));
 
 	return (
 		<>
@@ -287,11 +268,7 @@ export function ImportButton() {
 					</PopoverTrigger>
 
 					{/* Progress indicators */}
-					<PopoverContent
-						className="w-[320px] p-4"
-						align="start"
-						sideOffset={8}
-					>
+					<PopoverContent className="w-[320px] p-4" align="start" sideOffset={8}>
 						<div className="space-y-3">
 							{/* Import progress */}
 							{importProgress && (

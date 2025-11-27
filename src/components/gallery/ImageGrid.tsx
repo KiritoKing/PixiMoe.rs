@@ -32,7 +32,7 @@ function getColumnCount(
 	width: number,
 	minItemSize: number = 120,
 	gap: number = 16,
-	padding: number = 32,
+	padding: number = 32
 ): number {
 	if (width <= 0) return 2; // Fallback
 
@@ -50,10 +50,7 @@ function getColumnCount(
 
 type ThumbnailSize = "small" | "medium" | "large";
 
-export function ImageGrid({
-	files: customFiles,
-	isLoading: customLoading,
-}: ImageGridProps) {
+export function ImageGrid({ files: customFiles, isLoading: customLoading }: ImageGridProps) {
 	const { data: fetchedFiles, isLoading: fetchLoading } = useFiles();
 	const deleteFileMutation = useDeleteFile();
 	const deleteFilesBatchMutation = useDeleteFilesBatch();
@@ -61,15 +58,9 @@ export function ImageGrid({
 	const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
 	const [selectedHashes, setSelectedHashes] = useState<Set<string>>(new Set());
 	const [selectionMode, setSelectionMode] = useState(false);
-	const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(
-		null,
-	);
-	const [thumbnailLoadingHashes, setThumbnailLoadingHashes] = useState<
-		Set<string>
-	>(new Set());
-	const [thumbnailTimestamps, setThumbnailTimestamps] = useState<
-		Map<string, number>
-	>(new Map());
+	const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+	const [thumbnailLoadingHashes, setThumbnailLoadingHashes] = useState<Set<string>>(new Set());
+	const [thumbnailTimestamps, setThumbnailTimestamps] = useState<Map<string, number>>(new Map());
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [containerWidth, setContainerWidth] = useState(0);
 	const [thumbnailSize, setThumbnailSize] = useState<ThumbnailSize>("small");
@@ -125,15 +116,12 @@ export function ImageGrid({
 	}, [containerWidth, minItemSize]);
 
 	// Use callback ref to ensure we get the element when it's mounted
-	const widthMeasureCallbackRef = useCallback(
-		(element: HTMLDivElement | null) => {
-			widthMeasureRef.current = element;
-			if (element) {
-				setContainerWidth(element.clientWidth);
-			}
-		},
-		[],
-	);
+	const widthMeasureCallbackRef = useCallback((element: HTMLDivElement | null) => {
+		widthMeasureRef.current = element;
+		if (element) {
+			setContainerWidth(element.clientWidth);
+		}
+	}, []);
 
 	// Measure container width on mount and resize
 	useEffect(() => {
@@ -227,9 +215,7 @@ export function ImageGrid({
 			if (typeof window !== "undefined") {
 				const estimatedWidth = window.innerWidth - padding * 2;
 				if (estimatedWidth > 0 && columnCount > 0) {
-					return Math.floor(
-						(estimatedWidth - gap * (columnCount - 1)) / columnCount,
-					);
+					return Math.floor((estimatedWidth - gap * (columnCount - 1)) / columnCount);
 				}
 			}
 			return minItemSize; // Fallback
@@ -237,9 +223,7 @@ export function ImageGrid({
 		// Calculate item size to exactly fill available width without overflow
 		// Formula: (availableWidth - gaps) / columns
 		// gaps = gap * (columnCount - 1)
-		const calculatedSize = Math.floor(
-			(availableWidth - gap * (columnCount - 1)) / columnCount,
-		);
+		const calculatedSize = Math.floor((availableWidth - gap * (columnCount - 1)) / columnCount);
 		// Use minItemSize as target size, but allow slight adjustment if needed
 		// This ensures visible differences between size options
 		// If calculated size is close to minItemSize (within 20px), use minItemSize
@@ -277,40 +261,35 @@ export function ImageGrid({
 
 	// Listen for thumbnail generation events
 	useEffect(() => {
-		const unlistenThumbnail = listen<ProgressEvent>(
-			"thumbnail_progress",
-			(event) => {
-				const { stage, file_hash } = event.payload;
+		const unlistenThumbnail = listen<ProgressEvent>("thumbnail_progress", (event) => {
+			const { stage, file_hash } = event.payload;
 
-				if (file_hash) {
-					if (stage === "generating") {
-						setThumbnailLoadingHashes((prev) => new Set(prev).add(file_hash));
-					} else if (stage === "complete") {
-						console.log(
-							`Thumbnail complete for ${file_hash}, updating timestamp`,
-						);
-						// Remove from loading set
-						setThumbnailLoadingHashes((prev) => {
-							const newSet = new Set(prev);
-							newSet.delete(file_hash);
-							return newSet;
-						});
-						// Update timestamp to force cache bust
-						setThumbnailTimestamps((prev) => {
-							const newMap = new Map(prev);
-							newMap.set(file_hash, Date.now());
-							return newMap;
-						});
-					} else if (stage === "error") {
-						setThumbnailLoadingHashes((prev) => {
-							const newSet = new Set(prev);
-							newSet.delete(file_hash);
-							return newSet;
-						});
-					}
+			if (file_hash) {
+				if (stage === "generating") {
+					setThumbnailLoadingHashes((prev) => new Set(prev).add(file_hash));
+				} else if (stage === "complete") {
+					console.log(`Thumbnail complete for ${file_hash}, updating timestamp`);
+					// Remove from loading set
+					setThumbnailLoadingHashes((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(file_hash);
+						return newSet;
+					});
+					// Update timestamp to force cache bust
+					setThumbnailTimestamps((prev) => {
+						const newMap = new Map(prev);
+						newMap.set(file_hash, Date.now());
+						return newMap;
+					});
+				} else if (stage === "error") {
+					setThumbnailLoadingHashes((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(file_hash);
+						return newSet;
+					});
 				}
-			},
-		);
+			}
+		});
 
 		return () => {
 			unlistenThumbnail.then((fn) => fn());
@@ -319,9 +298,7 @@ export function ImageGrid({
 
 	const handleNavigate = (direction: "prev" | "next") => {
 		if (!selectedFile) return;
-		const currentIndex = files.findIndex(
-			(f) => f.file_hash === selectedFile.file_hash,
-		);
+		const currentIndex = files.findIndex((f) => f.file_hash === selectedFile.file_hash);
 		if (direction === "prev" && currentIndex > 0) {
 			setSelectedFile(files[currentIndex - 1]);
 		} else if (direction === "next" && currentIndex < files.length - 1) {
@@ -331,9 +308,7 @@ export function ImageGrid({
 
 	const handleCardClick = useCallback(
 		(file: FileRecord, e: React.MouseEvent) => {
-			const currentIndex = files.findIndex(
-				(f) => f.file_hash === file.file_hash,
-			);
+			const currentIndex = files.findIndex((f) => f.file_hash === file.file_hash);
 
 			if (e.shiftKey && lastSelectedIndex !== null) {
 				// Range selection
@@ -366,7 +341,7 @@ export function ImageGrid({
 				setLastSelectedIndex(currentIndex);
 			}
 		},
-		[selectionMode, files, lastSelectedIndex],
+		[selectionMode, files, lastSelectedIndex]
 	);
 
 	const clearSelection = useCallback(() => {
@@ -452,17 +427,14 @@ export function ImageGrid({
 			deleteFilesBatchMutation,
 			deleteFileMutation,
 			clearSelection,
-		],
+		]
 	);
 
 	// Keyboard shortcuts
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			// Ignore if user is typing in an input/textarea
-			if (
-				e.target instanceof HTMLInputElement ||
-				e.target instanceof HTMLTextAreaElement
-			) {
+			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
 				return;
 			}
 
@@ -508,10 +480,7 @@ export function ImageGrid({
 		return (
 			<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 p-4">
 				{Array.from({ length: 12 }).map((_, i) => (
-					<Skeleton
-						key={`loading-skeleton-${i}`}
-						className="aspect-square rounded-lg"
-					/>
+					<Skeleton key={`loading-skeleton-${i}`} className="aspect-square rounded-lg" />
 				))}
 			</div>
 		);
@@ -523,8 +492,8 @@ export function ImageGrid({
 				<ImageIcon className="h-24 w-24 mx-auto mb-4 text-muted-foreground" />
 				<h3 className="text-xl font-semibold mb-2">No images yet</h3>
 				<p className="text-muted-foreground max-w-md">
-					Import some images to get started. Click the "Import" button above to
-					select files.
+					Import some images to get started. Click the "Import" button above to select
+					files.
 				</p>
 			</div>
 		);
@@ -657,10 +626,10 @@ export function ImageGrid({
 												file={file}
 												isSelected={selectedHashes.has(file.file_hash)}
 												isLoadingThumbnail={thumbnailLoadingHashes.has(
-													file.file_hash,
+													file.file_hash
 												)}
 												thumbnailTimestamp={thumbnailTimestamps.get(
-													file.file_hash,
+													file.file_hash
 												)}
 												onClick={(e) => handleCardClick(file, e)}
 												onDelete={handleSingleDelete}

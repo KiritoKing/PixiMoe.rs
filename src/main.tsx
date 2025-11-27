@@ -12,12 +12,9 @@ const persister = createTauriPersister();
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
 	<React.StrictMode>
 		<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-			<PersistQueryClientProvider
-				client={queryClient}
-				persistOptions={{ persister }}
-			>
+			<PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
 				<App />
 			</PersistQueryClientProvider>
 		</ThemeProvider>
-	</React.StrictMode>,
+	</React.StrictMode>
 );

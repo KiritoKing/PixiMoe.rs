@@ -49,13 +49,7 @@ export function useRemoveTag() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: async ({
-			fileHash,
-			tagId,
-		}: {
-			fileHash: string;
-			tagId: number;
-		}) => {
+		mutationFn: async ({ fileHash, tagId }: { fileHash: string; tagId: number }) => {
 			return invoke<void>("remove_tag_from_file", {
 				fileHash,
 				tagId,
@@ -107,13 +101,7 @@ export function useBatchRemoveTag() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: async ({
-			fileHashes,
-			tagId,
-		}: {
-			fileHashes: string[];
-			tagId: number;
-		}) => {
+		mutationFn: async ({ fileHashes, tagId }: { fileHashes: string[]; tagId: number }) => {
 			return invoke<number>("remove_tag_from_files", {
 				fileHashes,
 				tagId,

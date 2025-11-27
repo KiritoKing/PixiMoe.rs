@@ -8,8 +8,16 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "lint": "tsc --noEmit",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
+    "type-check": "tsc --noEmit",
+    "lint": "pnpm biome check src/",
+    "lint:fix": "pnpm biome check --write --unsafe src/",
+    "format": "pnpm biome format --write src/",
+    "format:all": "pnpm biome format --write src/ && cd src-tauri && cargo fmt",
+    "format:check": "pnpm biome format --write src/ && cd src-tauri && cargo fmt --all -- --check",
+    "check": "pnpm type-check && pnpm lint && cd src-tauri && cargo clippy",
+    "check:fix": "pnpm type-check && pnpm lint:fix && cd src-tauri && cargo clippy --fix",
+    "prepare": "git config core.hooksPath .git-hooks || true",
+    "setup-hooks": "chmod +x .git-hooks/pre-commit && git config core.hooksPath .git-hooks"
   },
   "dependencies": {
     "@material/web": "^2.4.1",

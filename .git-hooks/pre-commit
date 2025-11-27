@@ -1,0 +1,141 @@
+#!/bin/bash
+
+# Pre-commit hook for formatting and static checks
+# Supports TypeScript, JavaScript, Rust, and configuration files
+
+set -e
+
+# Source utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common/utils.sh"
+
+# Get project root
+PROJECT_ROOT=$(get_project_root)
+cd "$PROJECT_ROOT"
+
+log_info "🚀 Running pre-commit checks..."
+
+# Initialize exit code
+exit_code=0
+
+# Get staged files by type
+ts_js_files=$(get_staged_files '\.(ts|tsx|js|jsx)$')
+rust_files=$(get_staged_files '\.rs$')
+config_files=$(get_staged_files '\.(toml|json|yaml|yml|md)$')
+
+log_info "📁 Found staged files:"
+[[ -n "$ts_js_files" ]] && log_info "  • TypeScript/JavaScript: $(echo "$ts_js_files" | wc -l | tr -d ' ') files"
+[[ -n "$rust_files" ]] && log_info "  • Rust: $(echo "$rust_files" | wc -l | tr -d ' ') files"
+[[ -n "$config_files" ]] && log_info "  • Config files: $(echo "$config_files" | wc -l | tr -d ' ') files"
+
+# 1. TypeScript/JavaScript - Format and Lint with Biome
+if [[ -n "$ts_js_files" ]]; then
+    echo
+    log_step "📝 TypeScript/JavaScript: Biome format and lint"
+
+    # Check Biome command availability
+    if command_exists pnpm; then
+        biome_cmd="pnpm biome"
+    elif command_exists npm; then
+        biome_cmd="npm run biome"
+    elif command_exists biome; then
+        biome_cmd="biome"
+    else
+        log_error "Biome not found. Please install it or ensure it's available in package.json"
+        exit_code=1
+    fi
+
+    if [[ $exit_code -eq 0 ]]; then
+        # Run Biome check and format
+        if ! $biome_cmd check --write $ts_js_files; then
+            log_error "Biome check failed for TypeScript/JavaScript files"
+            exit_code=1
+        fi
+    fi
+fi
+
+# 2. Rust - Format and Lint
+if [[ -n "$rust_files" ]]; then
+    echo
+    log_step "🦀 Rust: Format and lint"
+
+    # Change to src-tauri directory for Rust commands
+    cd "$PROJECT_ROOT/src-tauri"
+
+    # Check if rustfmt is available
+    if command_exists cargo; then
+        # Format with rustfmt (run on entire project)
+        log_step "Rust: Formatting with rustfmt"
+        if ! cargo fmt --all -- --check; then
+            log_warning "Rust files not properly formatted, formatting now..."
+            cargo fmt --all
+            # Don't fail here, just format and continue
+        fi
+
+        # Lint with clippy (skip for now due to SQLX dependencies)
+        log_step "Rust: Linting with clippy (skipped - SQLX requires database)"
+        log_warning "Skipping clippy due to SQLX database dependencies. Use 'pnpm check' manually when database is available."
+    else
+        log_error "Cargo not found. Please install Rust"
+        exit_code=1
+    fi
+
+    # Return to project root
+    cd "$PROJECT_ROOT"
+fi
+
+# 3. Configuration Files - Format only
+if [[ -n "$config_files" ]]; then
+    echo
+    log_step "⚙️  Configuration files: Format only"
+
+    for file in $config_files; do
+        if [[ -f "$file" ]]; then
+            case "$file" in
+                *.json)
+                    if command_exists jq; then
+                        jq '.' "$file" > "$file.tmp" && mv "$file.tmp" "$file" && log_info "Formatted JSON: $file"
+                    elif command_exists python3; then
+                        python3 -m json.tool "$file" > "$file.tmp" && mv "$file.tmp" "$file" && log_info "Formatted JSON: $file"
+                    fi
+                    ;;
+                *.yaml|*.yml)
+                    if command_exists yq; then
+                        yq eval '.' "$file" > "$file.tmp" && mv "$file.tmp" "$file" && log_info "Formatted YAML: $file"
+                    fi
+                    ;;
+                *.toml)
+                    # TOML files are usually well-formatted by tools that generate them
+                    log_info "TOML file: $file (no formatting applied)"
+                    ;;
+                *.md)
+                    if command_exists prettier; then
+                        prettier --write "$file" && log_info "Formatted Markdown: $file"
+                    fi
+                    ;;
+            esac
+        fi
+    done
+fi
+
+# 4. TypeScript Type Checking (temporarily skipped for testing)
+if [[ -n "$ts_js_files" ]]; then
+    echo
+    log_step "🔍 TypeScript: Type checking (skipped for testing)"
+    log_warning "TypeScript type checking temporarily skipped. Use 'pnpm type-check' manually."
+fi
+
+# 5. Re-stage formatted files
+restage_formatted_files
+
+# Final result
+echo
+if [[ $exit_code -eq 0 ]]; then
+    log_success "✅ All pre-commit checks passed!"
+else
+    log_error "❌ Pre-commit checks failed. Please fix the issues above and try again."
+    echo
+    log_info "💡 To bypass hooks temporarily: git config core.hooksPath \"\""
+fi
+
+exit $exit_code

@@ -30,9 +30,7 @@ export function BatchOperationsBar({
 
 					{filesCount > 0 && (
 						<span className="text-sm text-muted-foreground">
-							{selectedCount === filesCount
-								? "全部选中"
-								: `共 ${filesCount} 张`}
+							{selectedCount === filesCount ? "全部选中" : `共 ${filesCount} 张`}
 						</span>
 					)}
 				</div>

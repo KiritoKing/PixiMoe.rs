@@ -1,0 +1,53 @@
+# Rust linter configuration
+# https://rust-lang.github.io/rust-clippy/master/index.html
+
+# Cognitive complexity threshold
+cognitive-complexity-threshold = 30
+
+# Method and function arguments
+too-many-arguments-threshold = 7
+
+# Function and method length
+too-many-lines-threshold = 100
+
+# Minimum supported Rust version
+msrv = "1.70.0"
+
+# Documentation
+missing-docs-in-crate-items = false
+
+# Types and traits
+avoid-breaking-exported-api = true
+enum-variant-name-threshold = 3
+
+# Memory and performance
+pass-by-value-size-limit = 256
+too-large-for-stack = 512
+trivial-copy-size-limit = 256
+
+# Array size threshold
+array-size-threshold = 512000
+
+# Function and struct complexity
+type-complexity-threshold = 250
+max-fn-params-bools = 4
+max-struct-bools = 3
+max-trait-bounds = 5
+
+# Large error threshold
+large-error-threshold = 100
+
+# Stack size threshold
+stack-size-threshold = 200000
+
+# Future size threshold
+future-size-threshold = 16
+
+# Trait complexity ordering (use default)
+
+# Naming conventions
+disallowed-names = ["foo", "bar", "baz", "quux"]
+min-ident-chars-threshold = 1
+
+# Unsafe macro metavars
+warn-unsafe-macro-metavars-in-private-macros = true

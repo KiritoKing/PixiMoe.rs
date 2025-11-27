@@ -33,9 +33,11 @@ Use the following commands to check code quality after each change submitted and
 
 | Command | PWD | Usage |
 | --- |:---:| ---:|
-| `pnpm tsc --noEmit` | `./` | Type checking for Typescript files |
-| `pnpm biome check --write ./src` | `./` | Lint and format frontend code |
+| `pnpm tsc --noEmit` | `./` | Check typescript code |
+| `pnpm biome check --write ./src` | `./` | Lint and format typescript code |
 | `cargo check` | `./src-tauri` | Check rust code |
+| `cargo fmt --all` | `./src-tauri` | Format rust code |
+| `cargo clippy --fix` | `./src-tauri` | Lint rust code |
  
 
 ## shadcn/ui Usage Rules

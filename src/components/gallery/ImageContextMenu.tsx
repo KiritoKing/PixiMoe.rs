@@ -45,13 +45,9 @@ export function ImageContextMenu({
 		const windowWidth = window.innerWidth;
 		const windowHeight = window.innerHeight;
 		const adjustedX =
-			position.x + menuWidth > windowWidth
-				? windowWidth - menuWidth - 8
-				: position.x;
+			position.x + menuWidth > windowWidth ? windowWidth - menuWidth - 8 : position.x;
 		const adjustedY =
-			position.y + menuHeight > windowHeight
-				? windowHeight - menuHeight - 8
-				: position.y;
+			position.y + menuHeight > windowHeight ? windowHeight - menuHeight - 8 : position.y;
 
 		return { x: adjustedX, y: adjustedY };
 	};

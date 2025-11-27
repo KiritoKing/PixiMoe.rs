@@ -25,13 +25,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-	Sheet,
-	SheetContent,
-	SheetHeader,
-	SheetTitle,
-	SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useDatabaseStats } from "@/lib/hooks/useAdmin";
 import { useNotifications } from "@/lib/stores/useNotifications";
 import { cn } from "@/lib/utils";
@@ -85,15 +79,12 @@ function NotificationItem({ notification }: { notification: Notification }) {
 			className={cn(
 				"relative border-b p-4 transition-colors",
 				!notification.read && "bg-muted/50",
-				notification.pinned && "border-l-4 border-l-primary",
+				notification.pinned && "border-l-4 border-l-primary"
 			)}
 		>
 			<div className="flex items-start gap-3">
 				<Icon
-					className={cn(
-						"mt-0.5 h-5 w-5 flex-shrink-0",
-						typeColors[notification.type],
-					)}
+					className={cn("mt-0.5 h-5 w-5 flex-shrink-0", typeColors[notification.type])}
 				/>
 				<button
 					type="button"
@@ -110,9 +101,7 @@ function NotificationItem({ notification }: { notification: Notification }) {
 									</Badge>
 								)}
 							</div>
-							<p className="text-sm text-muted-foreground">
-								{notification.message}
-							</p>
+							<p className="text-sm text-muted-foreground">{notification.message}</p>
 							{notification.details && (
 								<button
 									type="button"
@@ -164,15 +153,8 @@ function NotificationItem({ notification }: { notification: Notification }) {
 }
 
 export function NotificationCenter() {
-	const {
-		notifications,
-		isOpen,
-		filter,
-		setOpen,
-		setFilter,
-		clearAll,
-		loadFromStore,
-	} = useNotifications();
+	const { notifications, isOpen, filter, setOpen, setFilter, clearAll, loadFromStore } =
+		useNotifications();
 
 	const [showClearDialog, setShowClearDialog] = useState(false);
 	const [isClearDbDialogOpen, setIsClearDbDialogOpen] = useState(false);
@@ -183,7 +165,7 @@ export function NotificationCenter() {
 	}, [loadFromStore]);
 
 	const filteredNotifications = notifications.filter(
-		(n) => filter === "all" || n.type === filter,
+		(n) => filter === "all" || n.type === filter
 	);
 
 	const unreadCount = notifications.filter((n) => !n.read).length;
@@ -215,10 +197,7 @@ export function NotificationCenter() {
 						)}
 					</Button>
 				</SheetTrigger>
-				<SheetContent
-					side="right"
-					className="w-[400px] sm:w-[540px] flex flex-col p-0"
-				>
+				<SheetContent side="right" className="w-[400px] sm:w-[540px] flex flex-col p-0">
 					<div className="flex flex-col h-full">
 						<SheetHeader className="flex-shrink-0 px-6 pt-6 pb-4 pr-12">
 							<div className="flex items-center justify-between">

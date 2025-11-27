@@ -1,7 +1,4 @@
-import type {
-	PersistedClient,
-	Persister,
-} from "@tanstack/react-query-persist-client";
+import type { PersistedClient, Persister } from "@tanstack/react-query-persist-client";
 import { Store } from "@tauri-apps/plugin-store";
 
 export function createTauriPersister(): Persister {

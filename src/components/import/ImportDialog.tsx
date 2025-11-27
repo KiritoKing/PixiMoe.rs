@@ -16,19 +16,11 @@ import { Label } from "@/components/ui/label";
 interface ImportDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onConfirm: (options: {
-		tagNames: string[];
-		enableAITagging: boolean;
-	}) => void;
+	onConfirm: (options: { tagNames: string[]; enableAITagging: boolean }) => void;
 	fileCount: number;
 }
 
-export function ImportDialog({
-	open,
-	onOpenChange,
-	onConfirm,
-	fileCount,
-}: ImportDialogProps) {
+export function ImportDialog({ open, onOpenChange, onConfirm, fileCount }: ImportDialogProps) {
 	const [tagNames, setTagNames] = useState<string[]>([]);
 	const [enableAITagging, setEnableAITagging] = useState(false);
 
@@ -37,7 +29,7 @@ export function ImportDialog({
 			"[ImportDialog] Confirming with tagNames:",
 			tagNames,
 			"enableAITagging:",
-			enableAITagging,
+			enableAITagging
 		);
 		onConfirm({ tagNames, enableAITagging });
 		// Reset form
@@ -85,7 +77,7 @@ export function ImportDialog({
 									"[ImportDialog] Checkbox changed:",
 									checked,
 									"->",
-									newValue,
+									newValue
 								);
 								setEnableAITagging(newValue);
 							}}

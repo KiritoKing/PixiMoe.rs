@@ -66,7 +66,22 @@ Download ONNX models and place them in `src-tauri/models/`:
 - See `src-tauri/models/README.md` for instructions
 - AI features work without models (placeholder implementation)
 
-### 4. Run Development Server
+### 4. Git Hooks Setup (Required)
+
+```bash
+# Set up git hooks for automatic formatting and linting
+./.git-hooks/scripts/setup-hooks.sh
+```
+
+This will configure git hooks to automatically:
+- Format TypeScript/JavaScript files with Biome
+- Format Rust files with rustfmt
+- Lint Rust files with clippy
+- Format configuration files (JSON, YAML, Markdown)
+- Run TypeScript type checking
+- Re-stage formatted files before commit
+
+### 5. Run Development Server
 
 ```bash
 pnpm tauri dev
@@ -110,26 +125,59 @@ album-demo/
 ## Development Commands
 
 ```bash
-# Run dev server
-pnpm tauri dev
+# Development
+pnpm tauri dev              # Run dev server
+pnpm tauri build            # Build for production
 
-# Build for production
-pnpm tauri build
+# Code Quality
+pnpm lint                   # TypeScript type checking only
+pnpm lint:fix               # Fix TypeScript/JavaScript linting issues
+pnpm format                 # Format frontend code with Prettier
+pnpm format:all             # Format all code (TypeScript + Rust)
+pnpm format:check           # Check if code is properly formatted
+pnpm check                  # Run all linting and type checks
+pnpm check:fix              # Fix all linting issues automatically
 
-# Lint frontend
-pnpm run lint
+# Rust-specific
+cd src-tauri && cargo check # Check Rust compilation
+cd src-tauri && cargo test  # Run Rust tests
+cargo fmt                   # Format Rust code
+cargo clippy                # Lint Rust code
 
-# Check Rust types
-cd src-tauri && cargo check
+# Git Hooks
+pnpm setup-hooks            # Set up git hooks (alternative to setup script)
+./.git-hooks/scripts/setup-hooks.sh  # Set up git hooks with verification
+git config core.hooksPath ""  # Temporarily disable hooks
+git config core.hooksPath .git-hooks  # Re-enable hooks
 
-# Run Rust tests
-cd src-tauri && cargo test
+# Database
+sqlx migrate add <name>     # Create new migration
+sqlx migrate run           # Run pending migrations
+```
 
-# Create new migration
-sqlx migrate add <name>
+## Git Hooks
 
-# Run pending migrations
-sqlx migrate run
+The project includes comprehensive git hooks that automatically:
+
+- **Format Code**: TypeScript/JavaScript with Biome, Rust with rustfmt
+- **Lint Code**: TypeScript with Biome, Rust with clippy
+- **Type Check**: TypeScript compilation check
+- **Format Config Files**: JSON, YAML, Markdown formatting
+- **Re-stage Changes**: Automatically adds formatted files to commit
+
+**Hooks run on every commit** and will block commits with formatting/linting errors.
+
+### Managing Hooks
+
+```bash
+# Check if hooks are properly configured
+./.git-hooks/scripts/setup-hooks.sh --check
+
+# Temporarily disable hooks
+git config core.hooksPath ""
+
+# Re-enable hooks
+git config core.hooksPath .git-hooks
 ```
 
 ## IDE Setup

@@ -15,33 +15,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import {
-	useClearDatabase,
-	useClearDatabaseProgress,
-	useDatabaseStats,
-} from "@/lib/hooks/useAdmin";
+import { useClearDatabase, useClearDatabaseProgress, useDatabaseStats } from "@/lib/hooks/useAdmin";
 
 interface ClearDatabaseDialogProps {
 	isOpen: boolean;
 	onClose: () => void;
 }
 
-export function ClearDatabaseDialog({
-	isOpen,
-	onClose,
-}: ClearDatabaseDialogProps) {
+export function ClearDatabaseDialog({ isOpen, onClose }: ClearDatabaseDialogProps) {
 	const [confirmation, setConfirmation] = useState("");
-	const [stage, setStage] = useState<"confirm" | "progress" | "complete">(
-		"confirm",
-	);
+	const [stage, setStage] = useState<"confirm" | "progress" | "complete">("confirm");
 
 	const clearMutation = useClearDatabase();
 	const { data: stats } = useDatabaseStats();
 	const progress = useClearDatabaseProgress();
 	const queryClient = useQueryClient();
 
-	const requiredConfirmation =
-		"CLEAR_ALL_DATA_PERMANENTLY_清空所有数据_永久删除";
+	const requiredConfirmation = "CLEAR_ALL_DATA_PERMANENTLY_清空所有数据_永久删除";
 
 	const handleConfirm = async () => {
 		if (confirmation !== requiredConfirmation) return;
@@ -76,9 +66,7 @@ export function ClearDatabaseDialog({
 		return (progress.current / progress.total) * 100;
 	};
 
-	const totalRecords = stats
-		? Object.values(stats).reduce((sum, count) => sum + count, 0)
-		: 0;
+	const totalRecords = stats ? Object.values(stats).reduce((sum, count) => sum + count, 0) : 0;
 
 	return (
 		<AlertDialog open={isOpen} onOpenChange={handleClose}>
@@ -100,7 +88,9 @@ export function ClearDatabaseDialog({
 											</p>
 											<p className="text-sm text-muted-foreground">
 												此操作将
-												<strong className="text-destructive">永久删除</strong>
+												<strong className="text-destructive">
+													永久删除
+												</strong>
 												数据库中的所有数据：
 											</p>
 											<ul className="text-sm text-muted-foreground list-disc list-inside space-y-1 ml-2">
@@ -122,7 +112,9 @@ export function ClearDatabaseDialog({
 										<div className="grid grid-cols-2 gap-2 text-sm">
 											<div className="flex justify-between">
 												<span>图片文件：</span>
-												<Badge variant="secondary">{stats.files || 0}</Badge>
+												<Badge variant="secondary">
+													{stats.files || 0}
+												</Badge>
 											</div>
 											<div className="flex justify-between">
 												<span>标签：</span>
@@ -130,11 +122,15 @@ export function ClearDatabaseDialog({
 											</div>
 											<div className="flex justify-between">
 												<span>文件夹：</span>
-												<Badge variant="secondary">{stats.folders || 0}</Badge>
+												<Badge variant="secondary">
+													{stats.folders || 0}
+												</Badge>
 											</div>
 											<div className="flex justify-between">
 												<span>人物：</span>
-												<Badge variant="secondary">{stats.persons || 0}</Badge>
+												<Badge variant="secondary">
+													{stats.persons || 0}
+												</Badge>
 											</div>
 										</div>
 										<p className="text-xs text-muted-foreground mt-2">
@@ -203,14 +199,18 @@ export function ClearDatabaseDialog({
 											<p className="font-medium mb-2">操作摘要：</p>
 											<ul className="text-sm space-y-1">
 												<li>
-													删除记录总数：{clearMutation.data.records_deleted}
+													删除记录总数：
+													{clearMutation.data.records_deleted}
 												</li>
 												<li>
-													清空的表：{clearMutation.data.tables_cleared.length}
+													清空的表：
+													{clearMutation.data.tables_cleared.length}
 												</li>
 												<li>
 													自增序列重置：
-													{clearMutation.data.sequences_reset ? "是" : "否"}
+													{clearMutation.data.sequences_reset
+														? "是"
+														: "否"}
 												</li>
 											</ul>
 										</div>
@@ -234,8 +234,7 @@ export function ClearDatabaseDialog({
 								variant="destructive"
 								onClick={handleConfirm}
 								disabled={
-									confirmation !== requiredConfirmation ||
-									clearMutation.isPending
+									confirmation !== requiredConfirmation || clearMutation.isPending
 								}
 								className="flex items-center gap-2"
 							>

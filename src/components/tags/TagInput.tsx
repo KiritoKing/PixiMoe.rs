@@ -9,11 +9,7 @@ interface TagInputProps {
 	placeholder?: string;
 }
 
-export function TagInput({
-	value,
-	onChange,
-	placeholder = "Add tags...",
-}: TagInputProps) {
+export function TagInput({ value, onChange, placeholder = "Add tags..." }: TagInputProps) {
 	const [input, setInput] = useState("");
 	const [showSuggestions, setShowSuggestions] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);

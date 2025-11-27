@@ -35,12 +35,9 @@ export function useClearDatabaseProgress() {
 		let unlisten: (() => void) | null = null;
 
 		const setupListener = async () => {
-			unlisten = await listen<ProgressEvent>(
-				"clear_database_progress",
-				(event) => {
-					setProgress(event.payload);
-				},
-			);
+			unlisten = await listen<ProgressEvent>("clear_database_progress", (event) => {
+				setProgress(event.payload);
+			});
 		};
 
 		setupListener();

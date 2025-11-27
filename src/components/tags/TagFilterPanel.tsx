@@ -14,10 +14,7 @@ interface TagFilterPanelProps {
 	onTagsChange: (tagIds: number[]) => void;
 }
 
-export function TagFilterPanel({
-	selectedTagIds,
-	onTagsChange,
-}: TagFilterPanelProps) {
+export function TagFilterPanel({ selectedTagIds, onTagsChange }: TagFilterPanelProps) {
 	const { data: tags, isLoading } = useTags();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [showEmptyTags, setShowEmptyTags] = useState(false);
@@ -35,16 +32,14 @@ export function TagFilterPanel({
 	};
 
 	const filteredTags = tags?.filter((tag) =>
-		tag.name.toLowerCase().includes(searchQuery.toLowerCase()),
+		tag.name.toLowerCase().includes(searchQuery.toLowerCase())
 	);
 
 	// Separate tags into those with files and those without
 	const tagsWithFiles = filteredTags?.filter(
-		(tag) => tag.file_count !== undefined && tag.file_count > 0,
+		(tag) => tag.file_count !== undefined && tag.file_count > 0
 	);
-	const tagsWithoutFiles = filteredTags?.filter(
-		(tag) => !tag.file_count || tag.file_count === 0,
-	);
+	const tagsWithoutFiles = filteredTags?.filter((tag) => !tag.file_count || tag.file_count === 0);
 
 	// Group tags by type (for tags with files)
 	const tagsByType = tagsWithFiles?.reduce(
@@ -55,7 +50,7 @@ export function TagFilterPanel({
 			acc[tag.type].push(tag);
 			return acc;
 		},
-		{} as Record<string, Tag[]>,
+		{} as Record<string, Tag[]>
 	);
 
 	// Group empty tags by type (for tags without files)
@@ -68,7 +63,7 @@ export function TagFilterPanel({
 					acc[tag.type].push(tag);
 					return acc;
 				},
-				{} as Record<string, Tag[]>,
+				{} as Record<string, Tag[]>
 			)
 		: {};
 
@@ -111,12 +106,7 @@ export function TagFilterPanel({
 
 				{/* Clear button */}
 				{selectedTagIds.length > 0 && (
-					<Button
-						variant="link"
-						size="sm"
-						onClick={clearFilters}
-						className="mt-2 w-full"
-					>
+					<Button variant="link" size="sm" onClick={clearFilters} className="mt-2 w-full">
 						Clear filters ({selectedTagIds.length})
 					</Button>
 				)}
@@ -164,11 +154,15 @@ export function TagFilterPanel({
 												<span className="flex-1 text-sm truncate">
 													{tag.name}
 												</span>
-												{tag.file_count !== undefined && tag.file_count > 0 && (
-													<Badge variant="outline" className="text-xs">
-														{tag.file_count}
-													</Badge>
-												)}
+												{tag.file_count !== undefined &&
+													tag.file_count > 0 && (
+														<Badge
+															variant="outline"
+															className="text-xs"
+														>
+															{tag.file_count}
+														</Badge>
+													)}
 											</label>
 										))}
 									</div>
@@ -177,33 +171,33 @@ export function TagFilterPanel({
 
 							{/* Empty tags (shown below tags with files) */}
 							{showEmptyTags &&
-								Object.entries(emptyTagsByType || {}).map(
-									([type, typeTags]) => (
-										<div key={`empty-${type}`}>
-											<h3 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
-												{tagTypeLabels[type] || type}
-											</h3>
-											<div className="space-y-1">
-												{typeTags.map((tag) => (
-													<label
-														key={tag.tag_id}
-														className="flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer transition-colors text-muted-foreground"
-													>
-														<input
-															type="checkbox"
-															checked={selectedTagIds.includes(tag.tag_id)}
-															onChange={() => toggleTag(tag.tag_id)}
-															className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-														/>
-														<span className="flex-1 text-sm truncate">
-															{tag.name}
-														</span>
-													</label>
-												))}
-											</div>
+								Object.entries(emptyTagsByType || {}).map(([type, typeTags]) => (
+									<div key={`empty-${type}`}>
+										<h3 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
+											{tagTypeLabels[type] || type}
+										</h3>
+										<div className="space-y-1">
+											{typeTags.map((tag) => (
+												<label
+													key={tag.tag_id}
+													className="flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer transition-colors text-muted-foreground"
+												>
+													<input
+														type="checkbox"
+														checked={selectedTagIds.includes(
+															tag.tag_id
+														)}
+														onChange={() => toggleTag(tag.tag_id)}
+														className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+													/>
+													<span className="flex-1 text-sm truncate">
+														{tag.name}
+													</span>
+												</label>
+											))}
 										</div>
-									),
-								)}
+									</div>
+								))}
 						</div>
 					)}
 				</div>

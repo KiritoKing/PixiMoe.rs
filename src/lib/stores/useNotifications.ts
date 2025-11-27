@@ -11,7 +11,7 @@ interface NotificationState {
 	addNotification: (
 		notification: Omit<Notification, "id" | "timestamp" | "read"> & {
 			pinned?: boolean;
-		},
+		}
 	) => void;
 	markAsRead: (id: string) => void;
 	markAllAsRead: () => void;
@@ -38,9 +38,7 @@ const getStore = async (): Promise<Store> => {
 	return storeInstance;
 };
 
-const cleanupOldNotifications = (
-	notifications: Notification[],
-): Notification[] => {
+const cleanupOldNotifications = (notifications: Notification[]): Notification[] => {
 	const now = Date.now();
 	return notifications.filter((n) => {
 		// Keep pinned notifications
@@ -88,9 +86,7 @@ export const useNotifications = create<NotificationState>((set, get) => ({
 
 	markAsRead: (id) => {
 		set((state) => ({
-			notifications: state.notifications.map((n) =>
-				n.id === id ? { ...n, read: true } : n,
-			),
+			notifications: state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
 		}));
 		get().saveToStore();
 	},

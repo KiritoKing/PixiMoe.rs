@@ -9,19 +9,9 @@ import {
 import { TagInput } from "@/components/tags/TagInput";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-	useAddTag,
-	useFileTags,
-	useRemoveTag,
-	useRunAITagging,
-} from "@/lib/hooks";
+import { useAddTag, useFileTags, useRemoveTag, useRunAITagging } from "@/lib/hooks";
 import type { FileRecord } from "@/types";
 
 interface ImageViewerProps {
@@ -31,12 +21,7 @@ interface ImageViewerProps {
 	onNavigate?: (direction: "prev" | "next") => void;
 }
 
-export function ImageViewer({
-	file,
-	allFiles,
-	onClose,
-	onNavigate,
-}: ImageViewerProps) {
+export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewerProps) {
 	const [imageUrl, setImageUrl] = useState<string>("");
 	const [imageLoading, setImageLoading] = useState(true);
 	const [imageError, setImageError] = useState(false);
@@ -54,34 +39,29 @@ export function ImageViewer({
 
 	const hasAITags = tags.some((tag) => tag.type === "ai-generated");
 
-	const currentIndex = allFiles.findIndex(
-		(f) => f.file_hash === file.file_hash,
-	);
+	const currentIndex = allFiles.findIndex((f) => f.file_hash === file.file_hash);
 	const canGoPrev = currentIndex > 0;
 	const canGoNext = currentIndex < allFiles.length - 1;
 
 	// Calculate initial scale to fit image width to container (prioritize width)
-	const calculateInitialScale = useCallback(
-		(imgWidth: number, imgHeight: number): number => {
-			if (!imageContainerRef.current || imgWidth === 0 || imgHeight === 0) {
-				return 1;
-			}
-			const containerWidth = imageContainerRef.current.clientWidth;
-			const containerHeight = imageContainerRef.current.clientHeight;
+	const calculateInitialScale = useCallback((imgWidth: number, imgHeight: number): number => {
+		if (!imageContainerRef.current || imgWidth === 0 || imgHeight === 0) {
+			return 1;
+		}
+		const containerWidth = imageContainerRef.current.clientWidth;
+		const containerHeight = imageContainerRef.current.clientHeight;
 
-			if (containerWidth === 0 || containerHeight === 0) {
-				return 1;
-			}
+		if (containerWidth === 0 || containerHeight === 0) {
+			return 1;
+		}
 
-			// Calculate scale to fill width (use 95% of container width to leave small margin)
-			// Prioritize width - let image fill width, even if height slightly exceeds
-			// This makes images much more visible and easier to view
-			const scale = (containerWidth * 0.95) / imgWidth;
-			console.log("scale", scale);
-			return Math.max(scale, 0.1); // Minimum scale of 0.1
-		},
-		[],
-	);
+		// Calculate scale to fill width (use 95% of container width to leave small margin)
+		// Prioritize width - let image fill width, even if height slightly exceeds
+		// This makes images much more visible and easier to view
+		const scale = (containerWidth * 0.95) / imgWidth;
+		console.log("scale", scale);
+		return Math.max(scale, 0.1); // Minimum scale of 0.1
+	}, []);
 
 	useEffect(() => {
 		// Use app-asset:// protocol to load original image
@@ -93,12 +73,7 @@ export function ImageViewer({
 
 	// Apply initial scale after image dimensions are set and container is ready
 	useEffect(() => {
-		if (
-			imageDimensions &&
-			transformRef.current &&
-			imageContainerRef.current &&
-			!imageLoading
-		) {
+		if (imageDimensions && transformRef.current && imageContainerRef.current && !imageLoading) {
 			// Wait for container to have proper dimensions
 			const applyScale = () => {
 				if (!transformRef.current || !imageContainerRef.current) return;
@@ -112,10 +87,7 @@ export function ImageViewer({
 					return;
 				}
 
-				const scale = calculateInitialScale(
-					imageDimensions.width,
-					imageDimensions.height,
-				);
+				const scale = calculateInitialScale(imageDimensions.width, imageDimensions.height);
 				console.log(
 					"Applying scale:",
 					scale,
@@ -126,7 +98,7 @@ export function ImageViewer({
 					"container:",
 					containerWidth,
 					"x",
-					containerHeight,
+					containerHeight
 				);
 
 				// Reset transform first to ensure clean state
@@ -137,11 +109,7 @@ export function ImageViewer({
 					if (transformRef.current) {
 						const state = transformRef.current.state;
 						// Set transform with calculated scale, keeping centered position
-						transformRef.current.setTransform(
-							state.positionX,
-							state.positionY,
-							scale,
-						);
+						transformRef.current.setTransform(state.positionX, state.positionY, scale);
 					}
 				}, 100);
 			};
