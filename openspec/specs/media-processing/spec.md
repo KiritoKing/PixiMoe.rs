@@ -1,7 +1,7 @@
 # media-processing Specification
 
 ## Purpose
-TBD - created by archiving change improve-import-ux-and-tagging. Update Purpose after archive.
+提供媒体文件处理功能，包括WebP缩略图生成、多线程并行处理、启动时自动再生缺失缩略图等。确保缩略图能够高效生成并在UI中快速加载。
 ## Requirements
 ### Requirement: Multi-threaded Thumbnail Generation
 The system SHALL generate thumbnails in parallel using a thread pool to avoid blocking import pipeline.

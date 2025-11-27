@@ -1,7 +1,11 @@
 import { Tag, Wand2, X } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { useBatchAddTags, useBatchAITagging, useBatchRemoveTag } from "@/lib/hooks";
+import {
+	useBatchAddTags,
+	useBatchAITagging,
+	useBatchRemoveTag,
+} from "@/lib/hooks/useTagManagement";
 import { TagInput } from "./TagInput";
 
 interface BatchTagEditorProps {

@@ -1,5 +1,9 @@
-## MODIFIED Requirements
+# ui-foundation Specification
 
+## Purpose
+提供UI基础设施，包括shadcn/ui组件库设置、Tailwind CSS配置、React状态管理（Zustand和TanStack Query）、类型安全等基础功能。
+
+## Requirements
 ### Requirement: shadcn/ui Component Library Setup
 The system SHALL integrate shadcn/ui component library with Tailwind CSS for building accessible UI components and ensure all developers follow shadcn MCP lookup workflow.
 
@@ -31,7 +35,6 @@ The system SHALL integrate shadcn/ui component library with Tailwind CSS for bui
 - **THEN** the following components are added:
   - `button`: Primary action component
   - `dialog`: Modal dialog for confirmations
-  - `select`: Dropdown selection component
   - `input`: Form input fields
   - `card`: Content container component
   - `badge`: Tag display component
@@ -39,6 +42,7 @@ The system SHALL integrate shadcn/ui component library with Tailwind CSS for bui
   - `progress`: Progress indicators
   - `scroll-area`: Custom scrollable regions
   - `skeleton`: Loading placeholders
+  - `checkbox`: Checkbox input component
 - **AND** all components are importable from `@/components/ui/`
 
 ### Requirement: Tailwind CSS Configuration
@@ -65,80 +69,70 @@ The system SHALL configure Tailwind CSS with proper content paths, theme customi
 - **AND** all shadcn/ui components adapt to theme changes without custom dark: classes
 
 ### Requirement: Theme Management with System Detection
-The system SHALL provide dark/light theme support with system preference detection and manual toggle.
+The system SHALL provide dark/light theme support with system preference detection and manual toggle using next-themes library.
+
+#### Scenario: ThemeProvider wraps application
+- **WHEN** `src/main.tsx` renders
+- **THEN** ThemeProvider from next-themes (0.4.6+) wraps App component
+- **AND** ThemeProvider is configured with `attribute="class"`, `defaultTheme="system"`, and `enableSystem`
+- **AND** ThemeProvider manages theme state and localStorage sync
+- **AND** useTheme() hook from next-themes is available to all child components
+- **AND** theme transition is smooth without flash of unstyled content
 
 #### Scenario: System theme preference is detected on startup
 - **WHEN** application initializes
-- **THEN** `window.matchMedia('(prefers-color-scheme: dark)')` is queried
+- **THEN** next-themes automatically queries `window.matchMedia('(prefers-color-scheme: dark)')`
 - **AND** initial theme is set to 'light', 'dark', or 'system' based on stored preference (default: 'system')
 - **AND** appropriate `.dark` class is applied to html element
-- **AND** theme preference is persisted via localStorage
+- **AND** theme preference is persisted via localStorage automatically
 
 #### Scenario: User can toggle theme manually
-- **WHEN** user clicks theme toggle button in toolbar
+- **WHEN** user clicks theme toggle button (ThemeToggle component)
 - **THEN** theme cycles through: light → dark → system
 - **AND** html element's `.dark` class is updated immediately
-- **AND** new preference is saved to localStorage
-- **AND** all components re-render with new theme
+- **AND** new preference is saved to localStorage automatically
+- **AND** all components re-render with new theme via React context
 
 #### Scenario: System theme changes are detected
 - **WHEN** theme preference is set to 'system'
 - **AND** OS theme changes from light to dark (or vice versa)
-- **THEN** `matchMedia` listener fires
+- **THEN** next-themes automatically detects change via `matchMedia` listener
 - **AND** `.dark` class on html element is updated automatically
 - **AND** UI adapts to new system theme without page reload
 
-#### Scenario: ThemeProvider wraps application
+### Requirement: React State Management
+The system SHALL implement dual state management with Zustand (UI state) and TanStack Query (server state).
+
+#### Scenario: Zustand manages UI state
+- **WHEN** application initializes
+- **THEN** Zustand store is created for global UI state
+- **AND** store tracks at minimum: `isSidebarOpen`, `currentTheme`, `indexingProgress`
+- **AND** components can access and update state via hooks
+- **AND** state changes trigger React re-renders
+
+#### Scenario: TanStack Query manages server state
 - **WHEN** `src/main.tsx` renders
-- **THEN** custom ThemeProvider (or next-themes) wraps App component
-- **AND** ThemeProvider manages theme state and localStorage sync
-- **AND** useTheme() hook is available to all child components
-- **AND** theme transition is smooth without flash of unstyled content
+- **THEN** `QueryClientProvider` wraps the application root
+- **AND** QueryClient is configured with appropriate defaults (TanStack Query 5.90.8+):
+  - `staleTime`: 5 minutes
+  - `cacheTime`: 10 minutes
+  - `refetchOnWindowFocus`: false (desktop app context)
+- **AND** custom hooks like `useTags()` can be created to wrap Tauri commands
 
-## ADDED Requirements
+### Requirement: Component Type Safety
+The system SHALL ensure all UI components and Tauri invocations are fully type-safe.
 
-### Requirement: Component Migration to shadcn/ui
-The system SHALL replace all custom UI components with shadcn/ui equivalents for consistency and accessibility.
+#### Scenario: Tauri commands have TypeScript types
+- **WHEN** developer creates typed wrapper for Tauri commands in `src/lib/tauri.ts`
+- **THEN** all `invoke()` calls have explicit return types
+- **AND** TypeScript compiler catches mismatched types
+- **AND** IntelliSense provides parameter hints
 
-#### Scenario: ImportButton uses shadcn components
-- **WHEN** ImportButton component is refactored
-- **THEN** native button is replaced with shadcn Button component
-- **AND** progress stats popover uses shadcn Popover component
-- **AND** progress bars use shadcn Progress component
-- **AND** all dark: Tailwind classes are removed (rely on CSS variables)
-
-#### Scenario: ImageCard uses shadcn Card
-- **WHEN** ImageCard component is refactored
-- **THEN** container div is replaced with shadcn Card component
-- **AND** loading state uses shadcn Skeleton component
-- **AND** error state displays within CardContent
-- **AND** all inline background/border styles use theme CSS variables
-
-#### Scenario: ImageGrid uses shadcn Skeleton
-- **WHEN** ImageGrid component is refactored
-- **THEN** loading placeholder divs are replaced with shadcn Skeleton components
-- **AND** empty state uses proper typography with muted-foreground color
-- **AND** grid container uses responsive CSS Grid without hard-coded dark: classes
-
-#### Scenario: TagInput uses shadcn components
-- **WHEN** TagInput component is refactored
-- **THEN** native input is replaced with shadcn Input component
-- **AND** tag badges use shadcn Badge component with variants
-- **AND** autocomplete dropdown uses shadcn Popover or Combobox
-
-#### Scenario: TagFilterPanel uses shadcn components
-- **WHEN** TagFilterPanel component is refactored
-- **THEN** sidebar container uses shadcn ScrollArea for overflow handling
-- **AND** tag badges use shadcn Badge with secondary variant
-- **AND** section headers use proper typography components
-- **AND** checkboxes use shadcn Checkbox (if needed) or native with proper styling
-
-#### Scenario: ImageViewer uses shadcn Dialog
-- **WHEN** ImageViewer component is refactored
-- **THEN** modal overlay is replaced with shadcn Dialog component
-- **AND** close button uses shadcn Button with ghost variant
-- **AND** dialog content follows shadcn DialogContent patterns
-- **AND** dialog respects theme without custom dark mode classes
+#### Scenario: Component props are validated
+- **WHEN** developer uses shadcn/ui components
+- **THEN** TypeScript validates all prop types
+- **AND** invalid prop combinations are caught at compile time
+- **AND** React DevTools shows correct prop types
 
 ### Requirement: Development Guidelines for shadcn Usage
 The system SHALL enforce a consistent workflow for using shadcn components through MCP tools and documentation lookup.
@@ -159,3 +153,4 @@ The system SHALL enforce a consistent workflow for using shadcn components throu
 - **AND** Context7 returns comprehensive API documentation
 - **AND** developer follows documented prop types and usage patterns
 - **AND** no guessing or trial-and-error with component APIs
+

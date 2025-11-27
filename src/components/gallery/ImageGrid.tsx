@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BatchTagEditor } from "@/components/tags/BatchTagEditor";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDeleteFile, useDeleteFilesBatch, useFiles } from "@/lib/hooks";
+import { useDeleteFile, useDeleteFilesBatch, useFiles } from "@/lib/hooks/useFiles";
 import type { FileRecord, ProgressEvent } from "@/types";
 import { BatchOperationsBar } from "./BatchOperationsBar";
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";

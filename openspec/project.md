@@ -1,4 +1,3 @@
-```markdown
 # Project Context
 
 ## Purpose
@@ -32,30 +31,37 @@ cd src-tauri && sqlx migrate run
 ```
 
 ## Tech Stack
-- **Application Framework**: Tauri v2+ (Rust 后端 + WebView 前端)
+- **Application Framework**: Tauri v2 (Rust 后端 + WebView 前端)
 - **Backend Language**: Rust (高性能、内存安全)
-- **Frontend Framework**: React 18+ with TypeScript
-- **Build System**: Vite (支持 HMR 快速开发)
-- **UI Components**: shadcn/ui + Tailwind CSS (现代化、可定制)
-- **Database**: SQLite with sqlx (嵌入式、零配置、编译时 SQL 检查)
-- **AI Runtime**: ONNX Runtime (ort crate) - 自动硬件加速
+- **Frontend Framework**: React 19.1.0 with TypeScript 5.8.3
+- **Build System**: Vite 7.0.4 (支持 HMR 快速开发)
+- **UI Components**: shadcn/ui + Tailwind CSS 4.1.17 (现代化、可定制)
+- **Theme Management**: next-themes 0.4.6 (系统主题检测和切换)
+- **Database**: SQLite with sqlx 0.8 (嵌入式、零配置、编译时 SQL 检查)
+- **AI Runtime**: ONNX Runtime (ort crate 2.0.0-rc.10) - 自动硬件加速
 - **State Management**:
-  - Zustand (UI 状态管理)
-  - TanStack Query (服务端状态管理) + tauri-plugin-store 持久化
-- **Image Processing**: image-rs crate (WebP 缩略图生成)
-- **Hashing**: BLAKE3 (内容寻址、去重)
+  - Zustand 5.0.8 (UI 状态管理)
+  - TanStack Query 5.90.8 (服务端状态管理，使用 `gcTime` 替代 `cacheTime`)
+  - TanStack Query Persist Client 5.90.10 + tauri-plugin-store 2.4.1 (查询缓存持久化)
+- **Code Quality Tools**: Biome 2.3.8 (linting 和 formatting，替代 ESLint/Prettier)
+- **Image Processing**: image-rs crate 0.25 (WebP 缩略图生成)
+- **Hashing**: BLAKE3 1.5 (内容寻址、去重)
 
 ## Project Conventions
 
 ### Code Style
-- **Rust**: 遵循 Rust 2021 版本规范，使用 `rustfmt` 格式化
-- **TypeScript**: 严格模式，显式返回类型，禁止隐式 `any`
+- **Rust**: 遵循 Rust 2021 版本规范，使用 `cargo fmt` 格式化，使用 `cargo clippy` 检查
+- **TypeScript**: 严格模式，显式返回类型，禁止隐式 `any`，使用 `tsc --noEmit` 类型检查
+- **代码格式化工具**:
+  - **前端**: Biome 2.3.8 (统一处理 linting 和 formatting，替代 ESLint/Prettier)
+  - **后端**: `cargo fmt` 和 `cargo clippy`
 - **命名规范**:
   - Rust: 函数/变量用 snake_case，类型/结构体用 PascalCase
   - TypeScript: 函数/变量用 camelCase，组件/类型用 PascalCase
   - 数据库: 表名和字段名用 snake_case
 - **注释**: 公共 API 使用文档注释 (`///` in Rust, JSDoc in TypeScript)
 - **错误处理**: Rust 使用 `Result<T, E>`，生产代码避免 `unwrap()`
+- **Git Hooks**: 使用 `.git-hooks/` 目录配置 pre-commit hooks 自动格式化和检查
 
 ### Architecture Patterns
 - **本地优先**: 所有数据（数据库、缩略图、AI 模型）本地运行
@@ -66,6 +72,8 @@ cd src-tauri && sqlx migrate run
 - **关注点分离**:
   - Rust: 模块化结构 (db/, commands/, ai/, protocols/)
   - React: Hooks 处理逻辑，组件负责展示
+  - Hooks 组织: 按功能域组织（useFiles.ts, useTags.ts, useTagManagement.ts 等），直接导入不使用 barrel files
+- **事件监听**: 使用统一的 `useTauriEvent<T>()` hook 进行类型安全的事件监听，自动处理清理
 - **协议缩略图**: 使用 Tauri 自定义协议 (`app-asset://`) 和永久缓存头
 
 ### Testing Strategy
@@ -139,5 +147,3 @@ cd src-tauri && sqlx migrate run
   - 导出功能（ZIP/文件夹 + 元数据）
   - 启动优化（闪屏、SSR）
   - 缩略图缓存大小管理（LRU 淘汰）
-
-```

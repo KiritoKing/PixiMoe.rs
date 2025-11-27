@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTags } from "@/lib/hooks";
+import { useTags } from "@/lib/hooks/useTags";
 import type { Tag } from "@/types";
 
 interface TagFilterPanelProps {

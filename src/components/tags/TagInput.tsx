@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { useSearchTags } from "@/lib/hooks";
+import { useSearchTags } from "@/lib/hooks/useTagManagement";
 
 interface TagInputProps {
 	value: string[];

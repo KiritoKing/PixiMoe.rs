@@ -1,13 +1,14 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { listen } from "@tauri-apps/api/event";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Toaster } from "react-hot-toast";
 import { ImageGrid } from "./components/gallery/ImageGrid";
 import { ImportButton } from "./components/import/ImportButton";
 import { NotificationCenter } from "./components/notifications/NotificationCenter";
 import { TagFilterPanel } from "./components/tags/TagFilterPanel";
 import { ThemeToggle } from "./components/theme-toggle";
-import { useFiles, useSearchFiles } from "./lib/hooks";
+import { useFiles } from "./lib/hooks/useFiles";
+import { useSearchFiles } from "./lib/hooks/useSearchFiles";
+import { useTauriEvent } from "./lib/hooks/useTauriEvent";
 import "./App.css";
 
 function App() {
@@ -15,33 +16,28 @@ function App() {
 	const queryClient = useQueryClient();
 
 	// Listen for thumbnail regeneration events
-	useEffect(() => {
-		const unlisten = listen<number>("thumbnails_regenerated", (event) => {
-			console.log(`${event.payload} thumbnails were regenerated, refreshing...`);
+	useTauriEvent<number>(
+		"thumbnails_regenerated",
+		(count) => {
+			console.log(`${count} thumbnails were regenerated, refreshing...`);
 			// Invalidate all file queries to trigger refetch
 			queryClient.invalidateQueries({ queryKey: ["files"] });
-		});
-
-		return () => {
-			unlisten.then((fn) => fn());
-		};
-	}, [queryClient]);
+		},
+		[queryClient]
+	);
 
 	// Listen for database clearing completion events
-	useEffect(() => {
-		const unlisten = listen("clear_database_progress", (event) => {
-			const progress = event.payload as { stage: string };
+	useTauriEvent<{ stage: string }>(
+		"clear_database_progress",
+		(progress) => {
 			if (progress.stage === "completed") {
 				console.log("Database cleared, refreshing all queries...");
 				// Invalidate all queries to trigger a complete refresh
 				queryClient.invalidateQueries();
 			}
-		});
-
-		return () => {
-			unlisten.then((fn) => fn());
-		};
-	}, [queryClient]);
+		},
+		[queryClient]
+	);
 
 	// Use search if tags are selected, otherwise get all files
 	const { data: allFiles, isLoading: allLoading } = useFiles();

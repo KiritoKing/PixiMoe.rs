@@ -1,11 +1,12 @@
-import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Loader2, Upload } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useBatchAITagging, useImportFiles } from "@/lib/hooks";
+import { useImportFiles } from "@/lib/hooks/useImportFiles";
+import { useBatchAITagging } from "@/lib/hooks/useTagManagement";
+import { useTauriEvent } from "@/lib/hooks/useTauriEvent";
 import { createToastWithDetails } from "@/lib/utils/notifications";
 import type { ProgressEvent } from "@/types";
 import { ImportDialog } from "./ImportDialog";
@@ -34,104 +35,94 @@ export function ImportButton() {
 	const [aiTaggingCompleteCount, setAiTaggingCompleteCount] = useState(0);
 	const [aiTaggingTotal, setAiTaggingTotal] = useState(0);
 
-	useEffect(() => {
-		// Listen for import progress events
-		const unlistenImport = listen<ProgressEvent>("import_progress", (event) => {
-			setImportProgress(event.payload);
-		});
+	// Listen for import progress events
+	useTauriEvent<ProgressEvent>("import_progress", (payload) => {
+		setImportProgress(payload);
+	});
 
-		// Listen for thumbnail progress events
-		const unlistenThumbnail = listen<ProgressEvent>("thumbnail_progress", (event) => {
-			setThumbnailProgress(event.payload);
-			const payload = event.payload;
+	// Listen for thumbnail progress events
+	useTauriEvent<ProgressEvent>("thumbnail_progress", (payload) => {
+		setThumbnailProgress(payload);
 
-			if (payload.file_hash) {
-				const fileHash = payload.file_hash;
-				setThumbnailProcessingHashes((prev) => {
-					const next = new Set(prev);
-					if (payload.stage === "generating") {
-						next.add(fileHash);
-					} else if (payload.stage === "complete" || payload.stage === "error") {
-						next.delete(fileHash);
-						if (payload.stage === "complete") {
-							setThumbnailCompleteCount((count) => count + 1);
-						}
+		if (payload.file_hash) {
+			const fileHash = payload.file_hash;
+			setThumbnailProcessingHashes((prev) => {
+				const next = new Set(prev);
+				if (payload.stage === "generating") {
+					next.add(fileHash);
+				} else if (payload.stage === "complete" || payload.stage === "error") {
+					next.delete(fileHash);
+					if (payload.stage === "complete") {
+						setThumbnailCompleteCount((count) => count + 1);
 					}
-					return next;
-				});
-			}
+				}
+				return next;
+			});
+		}
 
-			// Update total if provided
-			if (payload.total !== undefined) {
-				setThumbnailTotal(payload.total);
-			}
-		});
+		// Update total if provided
+		if (payload.total !== undefined) {
+			setThumbnailTotal(payload.total);
+		}
+	});
 
-		// Listen for AI tagging progress events
-		const unlistenAi = listen<ProgressEvent>("ai_tagging_progress", (event) => {
-			setAiProgress(event.payload);
-			const payload = event.payload;
+	// Listen for AI tagging progress events
+	useTauriEvent<ProgressEvent>("ai_tagging_progress", (payload) => {
+		setAiProgress(payload);
 
-			if (payload.file_hash) {
-				const fileHash = payload.file_hash;
-				setAiTaggingProcessingHashes((prev) => {
-					const next = new Set(prev);
-					if (payload.stage === "classifying" || payload.stage === "saving_tags") {
-						next.add(fileHash);
-					} else if (
-						payload.stage === "complete" ||
-						payload.stage === "error" ||
-						payload.stage === "skipped"
-					) {
-						next.delete(fileHash);
-						if (payload.stage === "complete") {
-							setAiTaggingCompleteCount((count) => count + 1);
-						}
+		if (payload.file_hash) {
+			const fileHash = payload.file_hash;
+			setAiTaggingProcessingHashes((prev) => {
+				const next = new Set(prev);
+				if (payload.stage === "classifying" || payload.stage === "saving_tags") {
+					next.add(fileHash);
+				} else if (
+					payload.stage === "complete" ||
+					payload.stage === "error" ||
+					payload.stage === "skipped"
+				) {
+					next.delete(fileHash);
+					if (payload.stage === "complete") {
+						setAiTaggingCompleteCount((count) => count + 1);
 					}
-					return next;
-				});
-			}
+				}
+				return next;
+			});
+		}
 
-			// Update total if provided
-			if (payload.total !== undefined) {
+		// Update total if provided
+		if (payload.total !== undefined) {
+			setAiTaggingTotal(payload.total);
+		}
+
+		// Handle batch complete
+		if (payload.stage === "batch_complete") {
+			setAiTaggingProcessingHashes(new Set());
+			if (payload.current !== undefined && payload.total !== undefined) {
+				setAiTaggingCompleteCount(payload.current);
 				setAiTaggingTotal(payload.total);
 			}
+		}
 
-			// Handle batch complete
-			if (payload.stage === "batch_complete") {
-				setAiTaggingProcessingHashes(new Set());
-				if (payload.current !== undefined && payload.total !== undefined) {
-					setAiTaggingCompleteCount(payload.current);
-					setAiTaggingTotal(payload.total);
-				}
-			}
-
-			// Show toast for AI tagging completion with notification center integration
-			if (payload.stage === "complete") {
-				createToastWithDetails(
-					toast,
-					"success",
-					"AI 标签完成",
-					payload.message,
-					`文件哈希: ${payload.file_hash || "未知"}\n${payload.message}`
-				);
-			} else if (payload.stage === "error") {
-				createToastWithDetails(
-					toast,
-					"error",
-					"AI 标签失败",
-					payload.message,
-					`文件哈希: ${payload.file_hash || "未知"}\n错误: ${payload.message}`
-				);
-			}
-		});
-
-		return () => {
-			unlistenImport.then((fn) => fn());
-			unlistenThumbnail.then((fn) => fn());
-			unlistenAi.then((fn) => fn());
-		};
-	}, []);
+		// Show toast for AI tagging completion with notification center integration
+		if (payload.stage === "complete") {
+			createToastWithDetails(
+				toast,
+				"success",
+				"AI 标签完成",
+				payload.message,
+				`文件哈希: ${payload.file_hash || "未知"}\n${payload.message}`
+			);
+		} else if (payload.stage === "error") {
+			createToastWithDetails(
+				toast,
+				"error",
+				"AI 标签失败",
+				payload.message,
+				`文件哈希: ${payload.file_hash || "未知"}\n错误: ${payload.message}`
+			);
+		}
+	});
 
 	const handleFileSelect = async () => {
 		try {

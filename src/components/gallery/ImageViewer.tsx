@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useAddTag, useFileTags, useRemoveTag, useRunAITagging } from "@/lib/hooks";
+import { useAddTag, useRemoveTag, useRunAITagging } from "@/lib/hooks/useTagManagement";
+import { useFileTags } from "@/lib/hooks/useTags";
 import type { FileRecord } from "@/types";
 
 interface ImageViewerProps {

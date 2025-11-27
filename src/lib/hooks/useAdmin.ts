@@ -1,8 +1,8 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ProgressEvent } from "@/types";
+import { useTauriEvent } from "./useTauriEvent";
 
 export function useClearDatabase() {
 	return useMutation({
@@ -31,23 +31,9 @@ export function useDatabaseStats() {
 export function useClearDatabaseProgress() {
 	const [progress, setProgress] = useState<ProgressEvent | null>(null);
 
-	useEffect(() => {
-		let unlisten: (() => void) | null = null;
-
-		const setupListener = async () => {
-			unlisten = await listen<ProgressEvent>("clear_database_progress", (event) => {
-				setProgress(event.payload);
-			});
-		};
-
-		setupListener();
-
-		return () => {
-			if (unlisten) {
-				unlisten();
-			}
-		};
-	}, []);
+	useTauriEvent<ProgressEvent>("clear_database_progress", (payload) => {
+		setProgress(payload);
+	});
 
 	return progress;
 }

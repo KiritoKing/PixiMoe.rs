@@ -41,45 +41,52 @@
 
 ## Phase 3: 集成验证
 
+**状态**: 代码已实现，等待测试验证
+
 ### 3.1 验证导入流程中的 AI 标签
-- [ ] 导入一个新图片文件（启用 AI 标签）
-- [ ] 验证 `tag_file_automatically()` 函数被调用
-- [ ] 验证模型推理能够正常执行
-- [ ] 验证标签能够保存到数据库
-- [ ] 检查数据库确认标签已正确关联到文件
+- [x] ✅ 代码已实现：`tag_file_automatically()` 函数已在 `src-tauri/src/commands/files.rs` 中实现
+- [x] ✅ 代码已实现：模型推理逻辑已在 `src-tauri/src/ai/tagger.rs` 中实现
+- [x] ✅ 代码已实现：标签保存逻辑已实现
+- [ ] ⚠️ 需要测试：导入一个新图片文件（启用 AI 标签）并验证完整流程
+- [ ] ⚠️ 需要测试：检查数据库确认标签已正确关联到文件
 
 ### 3.2 验证进度事件
-- [ ] 验证 `ai_tagging_progress` 事件在以下阶段被发出：
-  - "classifying" - 推理开始
-  - "saving_tags" - 保存标签
-  - "complete" - 完成（包含标签数量）
-- [ ] 验证事件包含正确的 `file_hash` 信息
-- [ ] 验证错误情况下 "error" 事件被发出
+- [x] ✅ 代码已实现：`ai_tagging_progress` 事件已在以下阶段发出（src-tauri/src/commands/files.rs）：
+  - "classifying" - 推理开始 ✅
+  - "saving_tags" - 保存标签 ✅
+  - "complete" - 完成（包含标签数量）✅
+  - "error" - 错误情况 ✅
+- [x] ✅ 代码已实现：事件包含 `file_hash` 信息
+- [ ] ⚠️ 需要测试：验证事件在实际运行中正确发出
 
 ### 3.3 验证错误处理
-- [ ] 测试模型文件缺失的情况
-- [ ] 测试无效图片文件的情况
-- [ ] 验证错误被正确记录和报告
-- [ ] 验证导入流程不会因为 AI 标签失败而中断
+- [x] ✅ 代码已实现：错误处理逻辑已实现（模型文件缺失、无效图片等）
+- [ ] ⚠️ 需要测试：测试模型文件缺失的情况
+- [ ] ⚠️ 需要测试：测试无效图片文件的情况
+- [ ] ⚠️ 需要测试：验证导入流程不会因为 AI 标签失败而中断
 
 ## Phase 4: 前端集成
 
+**状态**: 代码已实现，等待测试验证
+
 ### 4.1 验证前端进度显示
-- [ ] 检查 `ImportButton.tsx` 是否正确监听 `ai_tagging_progress` 事件
-- [ ] 验证进度指示器能够正确显示 AI 标签状态
-- [ ] 验证完成和错误消息能够正确显示
+- [x] ✅ 代码已实现：`ImportButton.tsx` 已监听 `ai_tagging_progress` 事件（src/components/import/ImportButton.tsx:71）
+- [x] ✅ 代码已实现：进度指示器已实现（aiProgress状态管理）
+- [ ] ⚠️ 需要测试：验证进度指示器能够正确显示 AI 标签状态
+- [ ] ⚠️ 需要测试：验证完成和错误消息能够正确显示
 
 ### 4.2 验证标签显示
-- [ ] 导入图片后，等待 AI 标签完成
-- [ ] 验证标签能够出现在图片的标签列表中
-- [ ] 验证标签数量正确
-- [ ] 验证标签名称正确
+- [ ] ⚠️ 需要测试：导入图片后，等待 AI 标签完成
+- [ ] ⚠️ 需要测试：验证标签能够出现在图片的标签列表中
+- [ ] ⚠️ 需要测试：验证标签数量正确
+- [ ] ⚠️ 需要测试：验证标签名称正确
 
 ### 4.3 测试手动触发 AI 标签
-- [ ] 测试 `useRunAITagging()` hook
-- [ ] 测试 `useBatchAITagging()` hook
-- [ ] 验证手动触发能够正常工作
-- [ ] 验证进度事件能够正确显示
+- [x] ✅ 代码已实现：`useRunAITagging()` hook 已实现（src/lib/hooks/useTagManagement.ts:122）
+- [x] ✅ 代码已实现：`useBatchAITagging()` hook 已实现（src/lib/hooks/useTagManagement.ts:138）
+- [x] ✅ 代码已实现：`tag_file_with_ai` 和 `tag_files_batch` 命令已实现（src-tauri/src/commands/files.rs:833, 880）
+- [ ] ⚠️ 需要测试：验证手动触发能够正常工作
+- [ ] ⚠️ 需要测试：验证进度事件能够正确显示
 
 ## Phase 5: 文档和清理
 
