@@ -30,7 +30,7 @@ function App() {
 	// Listen for database clearing completion events
 	useEffect(() => {
 		const unlisten = listen("clear_database_progress", (event) => {
-			const progress = event.payload;
+			const progress = event.payload as { stage: string };
 			if (progress.stage === "completed") {
 				console.log("Database cleared, refreshing all queries...");
 				// Invalidate all queries to trigger a complete refresh

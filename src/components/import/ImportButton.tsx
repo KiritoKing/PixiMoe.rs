@@ -49,9 +49,9 @@ export function ImportButton() {
 				setThumbnailProcessingHashes((prev) => {
 					const next = new Set(prev);
 					if (payload.stage === "generating") {
-						next.add(payload.file_hash);
+						next.add(payload.file_hash!);
 					} else if (payload.stage === "complete" || payload.stage === "error") {
-						next.delete(payload.file_hash);
+						next.delete(payload.file_hash!);
 						if (payload.stage === "complete") {
 							setThumbnailCompleteCount((count) => count + 1);
 						}
@@ -75,13 +75,13 @@ export function ImportButton() {
 				setAiTaggingProcessingHashes((prev) => {
 					const next = new Set(prev);
 					if (payload.stage === "classifying" || payload.stage === "saving_tags") {
-						next.add(payload.file_hash);
+						next.add(payload.file_hash!);
 					} else if (
 						payload.stage === "complete" ||
 						payload.stage === "error" ||
 						payload.stage === "skipped"
 					) {
-						next.delete(payload.file_hash);
+						next.delete(payload.file_hash!);
 						if (payload.stage === "complete") {
 							setAiTaggingCompleteCount((count) => count + 1);
 						}
