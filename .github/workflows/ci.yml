@@ -18,7 +18,7 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  # 代码质量检查（在所有构建之前运行）
+  # 代码质量检查（每次 push、PR、tag 时都运行）
   quality-check:
     name: Code Quality Check
     runs-on: ubuntu-latest
@@ -93,18 +93,35 @@ jobs:
         working-directory: src-tauri
         run: cargo fmt --all -- --check
 
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --features sqlite --no-default-features || true
+
+      - name: Prepare SQLX query cache
+        working-directory: src-tauri
+        env:
+          DATABASE_URL: sqlite:/tmp/test.db
+        run: |
+          # Create database
+          sqlx database create
+          # Run migrations (migrations are in ../migrations relative to src-tauri)
+          sqlx migrate run --source ../migrations
+          # Generate query cache for offline mode (build.rs sets SQLX_OFFLINE=true)
+          cargo sqlx prepare --database-url "sqlite:/tmp/test.db"
+        continue-on-error: false
+
       - name: Rust clippy
         working-directory: src-tauri
         env:
-          # SQLX offline mode - skip database connection checks during clippy
-          SQLX_OFFLINE: true
+          # build.rs sets SQLX_OFFLINE=true, so we need the prepared cache
+          DATABASE_URL: sqlite:/tmp/test.db
         run: cargo clippy --all-targets --all-features -- -D warnings
         continue-on-error: false
 
-  # 构建所有平台和架构
+  # 构建所有平台和架构（仅在 tag 触发时运行）
   build:
     name: Build (${{ matrix.os }}-${{ matrix.arch }})
     needs: quality-check
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
