@@ -39,24 +39,28 @@ A blazing-fast local-first anime gallery built with Rust, featuring intelligent 
 ![NSFW Detection](https://img.shields.io/badge/nsfw-detection-%23FFB6C1.svg?style=flat-square&logo=shield-alt&logoColor=white)
 ![Artist Recognition](https://img.shields.io/badge/artist-recognition-%23DA70D6.svg?style=flat-square&logo=palette&logoColor=white)
 
+</div>
+
 - 🏷️ **Danbooru-Style Tagging** - 4000+ tags with Swin-V2-Tagger-v3
 - 👥 **Character Recognition** - Smart character clustering across your collection
 - 🎨 **Style Classification** - AI-powered art style and artist identification
 - 🔞 **NSFW Detection** - Automatic content filtering and safe rating
 - 📚 **Collection Management** - Smart organization by series, artist, characters
 
+<div align="center">
+
 ### 🚀 Core Technology
 ![Performance](https://img.shields.io/badge/performance-extreme-%2300CED1.svg?style=flat-square&logo=rocket&logoColor=white)
 ![Privacy](https://img.shields.io/badge/privacy-first-%2332CD32.svg?style=flat-square&logo=lock&logoColor=white)
 ![GPU](https://img.shields.io/badge/gpu-accelerated-%23FF6347.svg?style=flat-square&logo=nvidia&logoColor=white)
+
+</div>
 
 - ⚡ **Extreme Performance** - Process 50,000+ images with blazing speed
 - 🔒 **Local-First Architecture** - Perfect for private anime collections
 - 🤖 **Zero-Config AI** - Pre-trained anime models work out of the box
 - 🔍 **Content-Addressed Storage** - BLAKE3 hashing for deduplication
 - 🎯 **Non-Destructive** - Original files never modified
-
-</div>
 
 ## 🛠️ Tech Stack
 
@@ -90,6 +94,8 @@ A blazing-fast local-first anime gallery built with Rust, featuring intelligent 
 ![Rust](https://img.shields.io/badge/Rust-1.70+-000000?style=for-the-badge&logo=rust&logoColor=white)
 ![pnpm](https://img.shields.io/badge/pnpm-8+-F69220?style=for-the-badge&logo=pnpm&logoColor=white)
 
+</div>
+
 ```bash
 # Clone the repository 🎀
 git clone https://github.com/KiritoKing/PixiMoe.rs.git
@@ -106,13 +112,13 @@ sqlx migrate run
 pnpm tauri dev
 ```
 
+<div align="center">
+
 **🎉 That's it! PixiMoe will automatically download AI models and start organizing your kawaii collection!**
 
 </div>
 
 ## 📊 Performance Metrics
-
-<div align="center">
 
 | Operation | GPU | CPU | Performance |
 |-----------|-----|-----|-------------|
@@ -120,6 +126,8 @@ pnpm tauri dev
 | **Danbooru Tagging** | 100ms | 500ms | ⚡⚡⚡⚡ |
 | **Character Detection** | 50ms | 100ms | ⚡⚡⚡⚡⚡ |
 | **Character Recognition** | 20ms | 50ms | ⚡⚡⚡⚡⚡ |
+
+<div align="center">
 
 ![Performance Graph](https://via.placeholder.com/600x200/FFB6C1/FFFFFF?text=Performance+Graph)
 
@@ -143,6 +151,8 @@ graph TD
     G --> H[📚 Kawaii Gallery]
 ```
 
+</div>
+
 ### 🎯 AI Processing Steps
 
 1. **🏷️ Danbooru Classification** - 4000+ tags from millions of anime images
@@ -152,11 +162,7 @@ graph TD
 5. **🎨 Content Analysis** - Style, artist, series detection
 6. **⚡ Hardware Optimization** - CUDA/CoreML/DirectML acceleration
 
-</div>
-
 ## 📁 Project Structure
-
-<div align="center">
 
 ```
 PixiMoe.rs/
@@ -176,11 +182,7 @@ PixiMoe.rs/
 └── 💾 piximoe.db              # SQLite database
 ```
 
-</div>
-
 ## 🎯 Design Philosophy
-
-<div align="center">
 
 | Principle | Description | Icon |
 |-----------|-------------|------|
@@ -189,8 +191,6 @@ PixiMoe.rs/
 | **⚡ Rust Performance** | Memory safety and blazing speed | 🦀 |
 | **🤖 Zero Configuration** | AI models work out of the box | ✨ |
 | **🏷️ Danbooru Compatible** | Familiar tags for anime community | 📋 |
-
-</div>
 
 ## 🤝 Contributing
 
@@ -201,6 +201,8 @@ PixiMoe.rs/
 We love contributions! Whether you're fixing bugs, adding features, or improving documentation! 🎀
 
 **📖 See our [Contributing Guide](CONTRIBUTING.md) for details**
+
+</div>
 
 ### 🚀 Quick Contributing Steps
 
@@ -218,6 +220,8 @@ git commit -m "✨ feat: add kawaii feature"
 # Push & PR 🎉
 git push origin feature/your-kawaii-feature
 ```
+
+<div align="center">
 
 ### 🏆 Contributors
 
