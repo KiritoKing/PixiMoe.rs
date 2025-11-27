@@ -63,24 +63,24 @@ pub async fn init_pool(app_data_dir: PathBuf) -> Result<SqlitePool, sqlx::Error>
 	// Ensure parent directory exists
 	if let Some(parent) = db_path.parent() {
 		std::fs::create_dir_all(parent).map_err(|e| {
-			eprintln!("Failed to create directory {:?}: {}", parent, e);
+			eprintln!("Failed to create directory {parent:?}: {e}");
 			sqlx::Error::Io(e)
 		})?;
 	}
 
-	eprintln!("Database path: {:?}", db_path);
+	eprintln!("Database path: {db_path:?}");
 
 	// Use SqliteConnectOptions to explicitly enable create mode
 	let connect_options =
 		SqliteConnectOptions::from_str(&format!("sqlite://{}", db_path.display()))
 			.map_err(|e| {
-				eprintln!("Failed to parse database URL: {}", e);
+				eprintln!("Failed to parse database URL: {e}");
 				sqlx::Error::Configuration(e.into())
 			})?
 			.create_if_missing(true);
 
 	let database_url = format!("sqlite://{}", db_path.display());
-	eprintln!("Connecting to database: {}", database_url);
+	eprintln!("Connecting to database: {database_url}");
 
 	// Try to connect to database
 	let pool_result = SqlitePoolOptions::new()
@@ -100,19 +100,17 @@ pub async fn init_pool(app_data_dir: PathBuf) -> Result<SqlitePool, sqlx::Error>
 				}
 				Err(e) => {
 					eprintln!(
-						"Database connection exists but query failed (possibly corrupted): {}",
-						e
+						"Database connection exists but query failed (possibly corrupted): {e}"
 					);
 					// Close the pool before deleting the file
 					pool.close().await;
 
 					// Delete corrupted database file
 					if db_path.exists() {
-						eprintln!("Removing corrupted database file: {:?}", db_path);
+						eprintln!("Removing corrupted database file: {db_path:?}");
 						if let Err(rm_err) = std::fs::remove_file(&db_path) {
 							eprintln!(
-								"Warning: Failed to remove corrupted database file: {}",
-								rm_err
+								"Warning: Failed to remove corrupted database file: {rm_err}"
 							);
 						}
 					}
@@ -128,7 +126,7 @@ pub async fn init_pool(app_data_dir: PathBuf) -> Result<SqlitePool, sqlx::Error>
 						.connect_with(retry_options)
 						.await
 						.map_err(|e| {
-							eprintln!("Failed to create new database: {}", e);
+							eprintln!("Failed to create new database: {e}");
 							e
 						})?
 				}
@@ -137,16 +135,10 @@ pub async fn init_pool(app_data_dir: PathBuf) -> Result<SqlitePool, sqlx::Error>
 		Err(e) => {
 			// Connection failed - check if file exists and might be corrupted
 			if db_path.exists() {
-				eprintln!(
-					"Database file exists but connection failed (possibly corrupted): {}",
-					e
-				);
-				eprintln!("Removing corrupted database file: {:?}", db_path);
+				eprintln!("Database file exists but connection failed (possibly corrupted): {e}");
+				eprintln!("Removing corrupted database file: {db_path:?}");
 				if let Err(rm_err) = std::fs::remove_file(&db_path) {
-					eprintln!(
-						"Warning: Failed to remove corrupted database file: {}",
-						rm_err
-					);
+					eprintln!("Warning: Failed to remove corrupted database file: {rm_err}");
 				}
 			} else {
 				eprintln!("Database file does not exist, will be created automatically");
@@ -163,7 +155,7 @@ pub async fn init_pool(app_data_dir: PathBuf) -> Result<SqlitePool, sqlx::Error>
 				.connect_with(retry_options)
 				.await
 				.map_err(|e| {
-					eprintln!("Failed to connect to database: {}", e);
+					eprintln!("Failed to connect to database: {e}");
 					e
 				})?
 		}

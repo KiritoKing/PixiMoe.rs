@@ -24,10 +24,10 @@ pub async fn handle_asset_protocol(
 	request: &Request<Vec<u8>>,
 ) -> Result<Response<Vec<u8>>, Box<dyn std::error::Error>> {
 	let uri = request.uri();
-	eprintln!("📥 Protocol request URI: {}", uri);
+	eprintln!("📥 Protocol request URI: {uri}");
 
 	let path = uri.path();
-	eprintln!("📂 Parsed path: '{}'", path);
+	eprintln!("📂 Parsed path: '{path}'");
 
 	// Handle thumbnails
 	if path.starts_with("/thumbnails/") {
@@ -51,7 +51,7 @@ fn handle_thumbnail_request(
 	path: &str,
 ) -> Result<Response<Vec<u8>>, Box<dyn std::error::Error>> {
 	let file_name = path.trim_start_matches("/thumbnails/");
-	eprintln!("📄 Extracted filename: '{}'", file_name);
+	eprintln!("📄 Extracted filename: '{file_name}'");
 
 	// Validate hash format (should be 64 hex characters + .webp)
 	if !file_name.ends_with(".webp") {
@@ -74,7 +74,7 @@ fn handle_thumbnail_request(
 	// Get thumbnail path
 	let app_data_dir = app.path().app_data_dir()?;
 	let thumbnail_path = app_data_dir.join("thumbnails").join(file_name);
-	eprintln!("📍 Looking for file at: {:?}", thumbnail_path);
+	eprintln!("📍 Looking for file at: {thumbnail_path:?}");
 
 	// Check if file exists
 	if !thumbnail_path.exists() {
@@ -105,7 +105,7 @@ async fn handle_original_request(
 	path: &str,
 ) -> Result<Response<Vec<u8>>, Box<dyn std::error::Error>> {
 	let file_hash = path.trim_start_matches("/originals/");
-	eprintln!("📄 Requesting original image with hash: '{}'", file_hash);
+	eprintln!("📄 Requesting original image with hash: '{file_hash}'");
 
 	// Validate hash format (should be 64 hex characters)
 	if file_hash.len() != 64 || !file_hash.chars().all(|c| c.is_ascii_hexdigit()) {
@@ -131,7 +131,7 @@ async fn handle_original_request(
 			.body(b"File not found".to_vec())?);
 	};
 
-	eprintln!("📍 Original file path: {:?}", original_path);
+	eprintln!("📍 Original file path: {original_path:?}");
 
 	// Check if file exists
 	let original_path = std::path::Path::new(&original_path);

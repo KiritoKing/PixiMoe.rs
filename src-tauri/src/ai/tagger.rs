@@ -31,11 +31,12 @@ const MAX_TAGS: usize = 50;
 // ============================================================================
 
 /// Label map: tag_id -> tag_name
-static LABEL_MAP: Lazy<Result<HashMap<usize, (String, u32)>, AppError>> =
-	Lazy::new(|| load_label_map());
+type LabelMapResult = Result<HashMap<usize, (String, u32)>, AppError>;
+
+static LABEL_MAP: Lazy<LabelMapResult> = Lazy::new(load_label_map);
 
 /// ONNX model session wrapped in Mutex for interior mutability
-static MODEL_SESSION: Lazy<Result<Arc<Mutex<Session>>, AppError>> = Lazy::new(|| load_model());
+static MODEL_SESSION: Lazy<Result<Arc<Mutex<Session>>, AppError>> = Lazy::new(load_model);
 
 /// Load label map from CSV file
 /// CSV format: tag_id,name,category,count
@@ -45,7 +46,7 @@ fn load_label_map() -> Result<HashMap<usize, (String, u32)>, AppError> {
 	let csv_path = match get_models_dir() {
 		Ok(dir) => dir.join("selected_tags.csv"),
 		Err(e) => {
-			eprintln!("[AI Model] ERROR: Failed to get models directory: {}", e);
+			eprintln!("[AI Model] ERROR: Failed to get models directory: {e}");
 			return Err(e);
 		}
 	};
@@ -57,7 +58,7 @@ fn load_label_map() -> Result<HashMap<usize, (String, u32)>, AppError> {
 			"Label map file not found: {}. Please download selected_tags.csv from Hugging Face.",
 			csv_path.display()
 		);
-		eprintln!("[AI Model] ERROR: {}", error_msg);
+		eprintln!("[AI Model] ERROR: {error_msg}");
 		return Err(AppError::Custom(error_msg));
 	}
 
@@ -65,8 +66,8 @@ fn load_label_map() -> Result<HashMap<usize, (String, u32)>, AppError> {
 	let content = match std::fs::read_to_string(&csv_path) {
 		Ok(c) => c,
 		Err(e) => {
-			let error_msg = format!("Failed to read label map: {}", e);
-			eprintln!("[AI Model] ERROR: {}", error_msg);
+			let error_msg = format!("Failed to read label map: {e}");
+			eprintln!("[AI Model] ERROR: {error_msg}");
 			return Err(AppError::Custom(error_msg));
 		}
 	};
@@ -90,7 +91,7 @@ fn load_label_map() -> Result<HashMap<usize, (String, u32)>, AppError> {
 
 	if map.is_empty() {
 		let error_msg = "Label map is empty or invalid".to_string();
-		eprintln!("[AI Model] ERROR: {}", error_msg);
+		eprintln!("[AI Model] ERROR: {error_msg}");
 		return Err(AppError::Custom(error_msg));
 	}
 
@@ -108,7 +109,7 @@ fn load_model() -> Result<Arc<Mutex<Session>>, AppError> {
 	let model_path = match get_models_dir() {
 		Ok(dir) => dir.join("swin-v2-tagger-v3.onnx"),
 		Err(e) => {
-			eprintln!("[AI Model] ERROR: Failed to get models directory: {}", e);
+			eprintln!("[AI Model] ERROR: Failed to get models directory: {e}");
 			return Err(e);
 		}
 	};
@@ -120,7 +121,7 @@ fn load_model() -> Result<Arc<Mutex<Session>>, AppError> {
             "Model file not found: {}. Please download model.onnx from Hugging Face and rename to swin-v2-tagger-v3.onnx.",
             model_path.display()
         );
-		eprintln!("[AI Model] ERROR: {}", error_msg);
+		eprintln!("[AI Model] ERROR: {error_msg}");
 		return Err(AppError::Custom(error_msg));
 	}
 
@@ -129,8 +130,8 @@ fn load_model() -> Result<Arc<Mutex<Session>>, AppError> {
 	let session = match Session::builder() {
 		Ok(builder) => builder,
 		Err(e) => {
-			let error_msg = format!("Failed to create ONNX session builder: {}", e);
-			eprintln!("[AI Model] ERROR: {}", error_msg);
+			let error_msg = format!("Failed to create ONNX session builder: {e}");
+			eprintln!("[AI Model] ERROR: {error_msg}");
 			return Err(AppError::Custom(error_msg));
 		}
 	};
@@ -139,8 +140,8 @@ fn load_model() -> Result<Arc<Mutex<Session>>, AppError> {
 	let session = match session.with_optimization_level(GraphOptimizationLevel::Level3) {
 		Ok(s) => s,
 		Err(e) => {
-			let error_msg = format!("Failed to set optimization level: {}", e);
-			eprintln!("[AI Model] ERROR: {}", error_msg);
+			let error_msg = format!("Failed to set optimization level: {e}");
+			eprintln!("[AI Model] ERROR: {error_msg}");
 			return Err(AppError::Custom(error_msg));
 		}
 	};
@@ -152,18 +153,17 @@ fn load_model() -> Result<Arc<Mutex<Session>>, AppError> {
 			s
 		}
 		Err(e) => {
-			let error_str = format!("{}", e);
+			let error_str = format!("{e}");
 			let error_msg = if error_str.contains("libonnxruntime") || error_str.contains("dlopen")
 			{
 				format!(
                     "Failed to load ONNX Runtime library. This usually means the ONNX Runtime binaries were not downloaded correctly.\n\n\
-                    Error: {}\n\n\
+                    Error: {e}\n\n\
                     To fix this:\n\
                     1. Clean and rebuild: `cd src-tauri && cargo clean && cargo build`\n\
                     2. Ensure you have internet connection (needed to download ONNX Runtime)\n\
                     3. Check that ort crate features are correct in Cargo.toml\n\
-                    4. If problem persists, try: `cargo clean -p ort-sys && cargo build`",
-                    e
+                    4. If problem persists, try: `cargo clean -p ort-sys && cargo build`"
                 )
 			} else {
 				format!(
@@ -176,7 +176,7 @@ fn load_model() -> Result<Arc<Mutex<Session>>, AppError> {
 					e
 				)
 			};
-			eprintln!("[AI Model] ERROR: {}", error_msg);
+			eprintln!("[AI Model] ERROR: {error_msg}");
 			return Err(AppError::Custom(error_msg));
 		}
 	};
@@ -188,6 +188,7 @@ fn load_model() -> Result<Arc<Mutex<Session>>, AppError> {
 /// Tries multiple strategies to locate the models directory:
 /// 1. CARGO_MANIFEST_DIR (development mode) -> src-tauri/models
 /// 2. Executable directory -> {exe_dir}/models
+///
 /// This function is designed to be fast and not block
 fn get_models_dir() -> Result<PathBuf, AppError> {
 	// Strategy 1: Use CARGO_MANIFEST_DIR in development (fastest path)
@@ -202,8 +203,7 @@ fn get_models_dir() -> Result<PathBuf, AppError> {
 	let exe_dir = std::env::current_exe()
         .map_err(|e| {
             AppError::Custom(format!(
-                "Failed to get executable directory: {}. Please ensure the application is running correctly.",
-                e
+                "Failed to get executable directory: {e}. Please ensure the application is running correctly."
             ))
         })?
         .parent()
@@ -295,7 +295,7 @@ pub async fn classify_image(image_path: &Path) -> Result<Vec<TagPrediction>, App
 		let error_msg =
 			"AI model not available. Please check models/README.md for setup instructions."
 				.to_string();
-		eprintln!("[AI Tagging] ERROR: {}", error_msg);
+		eprintln!("[AI Tagging] ERROR: {error_msg}");
 		return Err(AppError::Custom(error_msg));
 	}
 
@@ -303,7 +303,7 @@ pub async fn classify_image(image_path: &Path) -> Result<Vec<TagPrediction>, App
 
 	// Load image
 	let image = image::open(image_path)
-		.map_err(|e| AppError::Custom(format!("Failed to load image: {}", e)))?;
+		.map_err(|e| AppError::Custom(format!("Failed to load image: {e}")))?;
 
 	// Preprocess image
 	let input_tensor = preprocess_image(image)?;
@@ -311,19 +311,19 @@ pub async fn classify_image(image_path: &Path) -> Result<Vec<TagPrediction>, App
 	// Get model session
 	let session_arc = MODEL_SESSION
 		.as_ref()
-		.map_err(|e| AppError::Custom(format!("Model not loaded: {}", e)))?
+		.map_err(|e| AppError::Custom(format!("Model not loaded: {e}")))?
 		.clone();
 
 	// Run inference in blocking task
 	let predictions = tokio::task::spawn_blocking(move || {
 		// Create ort Value from ndarray
 		let input_value = ort::value::Value::from_array(input_tensor)
-			.map_err(|e| AppError::Custom(format!("Failed to create input value: {}", e)))?;
+			.map_err(|e| AppError::Custom(format!("Failed to create input value: {e}")))?;
 
 		// Lock the session
 		let mut session = session_arc
 			.lock()
-			.map_err(|e| AppError::Custom(format!("Failed to lock session: {}", e)))?;
+			.map_err(|e| AppError::Custom(format!("Failed to lock session: {e}")))?;
 
 		// Get output name first
 		let output_name = session
@@ -335,7 +335,7 @@ pub async fn classify_image(image_path: &Path) -> Result<Vec<TagPrediction>, App
 
 		let outputs = session
 			.run(ort::inputs![input_value])
-			.map_err(|e| AppError::Custom(format!("Inference failed: {}", e)))?;
+			.map_err(|e| AppError::Custom(format!("Inference failed: {e}")))?;
 
 		let output_value = outputs
 			.get(&output_name)
@@ -343,7 +343,7 @@ pub async fn classify_image(image_path: &Path) -> Result<Vec<TagPrediction>, App
 
 		let output_tensor = output_value
 			.try_extract_tensor::<f32>()
-			.map_err(|e| AppError::Custom(format!("Failed to extract output tensor: {}", e)))?;
+			.map_err(|e| AppError::Custom(format!("Failed to extract output tensor: {e}")))?;
 
 		// Convert to Vec<f32>
 		// Model outputs logits, need to apply sigmoid to get probabilities
@@ -365,12 +365,12 @@ pub async fn classify_image(image_path: &Path) -> Result<Vec<TagPrediction>, App
 		Ok::<Vec<f32>, AppError>(probabilities)
 	})
 	.await
-	.map_err(|e| AppError::Custom(format!("Inference task failed: {}", e)))??;
+	.map_err(|e| AppError::Custom(format!("Inference task failed: {e}")))??;
 
 	// Postprocess predictions
 	let label_map = LABEL_MAP
 		.as_ref()
-		.map_err(|e| AppError::Custom(format!("Label map not loaded: {}", e)))?;
+		.map_err(|e| AppError::Custom(format!("Label map not loaded: {e}")))?;
 
 	let mut results: Vec<TagPrediction> = predictions
 		.iter()
@@ -411,14 +411,14 @@ pub fn is_model_available() -> bool {
 	if !label_ok {
 		eprintln!("[AI Model] Label map not available");
 		if let Err(e) = LABEL_MAP.as_ref() {
-			eprintln!("[AI Model] Label map error: {}", e);
+			eprintln!("[AI Model] Label map error: {e}");
 		}
 	}
 
 	if !session_ok {
 		eprintln!("[AI Model] Model session not available");
 		if let Err(e) = MODEL_SESSION.as_ref() {
-			eprintln!("[AI Model] Model session error: {}", e);
+			eprintln!("[AI Model] Model session error: {e}");
 		}
 	}
 
@@ -439,8 +439,8 @@ pub fn get_model_status() -> Result<ModelStatus, AppError> {
 		csv_file_path: csv_path.display().to_string(),
 		label_map_loaded: LABEL_MAP.is_ok(),
 		model_session_loaded: MODEL_SESSION.is_ok(),
-		label_map_error: LABEL_MAP.as_ref().err().map(|e| format!("{}", e)),
-		model_session_error: MODEL_SESSION.as_ref().err().map(|e| format!("{}", e)),
+		label_map_error: LABEL_MAP.as_ref().err().map(|e| format!("{e}")),
+		model_session_error: MODEL_SESSION.as_ref().err().map(|e| format!("{e}")),
 	})
 }
 

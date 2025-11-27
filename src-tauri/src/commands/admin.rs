@@ -34,14 +34,14 @@ pub async fn clear_database(
 			total: Some(8),
 		},
 	)
-	.map_err(|e| AppError::Custom(format!("Failed to emit progress: {}", e)))?;
+	.map_err(|e| AppError::Custom(format!("Failed to emit progress: {e}")))?;
 
 	// Disable foreign keys for faster deletion
 	sqlx::query("PRAGMA foreign_keys = OFF")
 		.execute(pool.inner())
 		.await?;
 
-	let tables = vec![
+	let tables = [
 		"FileTags",
 		"FileFolders",
 		"Faces",
@@ -60,15 +60,15 @@ pub async fn clear_database(
 			"clear_database_progress",
 			ProgressEvent {
 				stage: format!("clearing_{}", table.to_lowercase()),
-				message: format!("正在清空表 {}...", table),
+				message: format!("正在清空表 {table}..."),
 				file_hash: None,
 				current: Some(index + 1),
 				total: Some(8),
 			},
 		)
-		.map_err(|e| AppError::Custom(format!("Failed to emit progress: {}", e)))?;
+		.map_err(|e| AppError::Custom(format!("Failed to emit progress: {e}")))?;
 
-		let result = sqlx::query(&format!("DELETE FROM {}", table))
+		let result = sqlx::query(&format!("DELETE FROM {table}"))
 			.execute(pool.inner())
 			.await?;
 
@@ -76,7 +76,7 @@ pub async fn clear_database(
 		total_deleted += deleted_count as u64;
 
 		if deleted_count > 0 {
-			tables_cleared.push(format!("{} ({} 条记录)", table, deleted_count));
+			tables_cleared.push(format!("{table} ({deleted_count} 条记录)"));
 		}
 	}
 
@@ -91,7 +91,7 @@ pub async fn clear_database(
 			total: Some(8),
 		},
 	)
-	.map_err(|e| AppError::Custom(format!("Failed to emit progress: {}", e)))?;
+	.map_err(|e| AppError::Custom(format!("Failed to emit progress: {e}")))?;
 
 	sqlx::query("PRAGMA foreign_keys = ON")
 		.execute(pool.inner())
@@ -108,7 +108,7 @@ pub async fn clear_database(
 			total: Some(8),
 		},
 	)
-	.map_err(|e| AppError::Custom(format!("Failed to emit progress: {}", e)))?;
+	.map_err(|e| AppError::Custom(format!("Failed to emit progress: {e}")))?;
 
 	sqlx::query("DELETE FROM sqlite_sequence")
 		.execute(pool.inner())
@@ -125,7 +125,7 @@ pub async fn clear_database(
 			total: Some(8),
 		},
 	)
-	.map_err(|e| AppError::Custom(format!("Failed to emit progress: {}", e)))?;
+	.map_err(|e| AppError::Custom(format!("Failed to emit progress: {e}")))?;
 
 	Ok(ClearDatabaseResult {
 		tables_cleared,

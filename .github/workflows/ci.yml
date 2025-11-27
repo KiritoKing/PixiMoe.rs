@@ -233,18 +233,39 @@ jobs:
           CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
           AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
 
-      - name: Find and package artifacts
+      - name: Find and package artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $msiPath = Get-ChildItem -Path "src-tauri\target\${{ matrix.target }}\release\bundle\msi" -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($msiPath) {
+            $artifactPath = $msiPath.FullName
+            $artifactExt = $msiPath.Extension
+          } else {
+            $exePath = Get-ChildItem -Path "src-tauri\target\${{ matrix.target }}\release" -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notlike "*\bundle\*" } | Select-Object -First 1
+            if ($exePath) {
+              $artifactPath = $exePath.FullName
+              $artifactExt = $exePath.Extension
+            }
+          }
+          
+          if (-not $artifactPath -or -not (Test-Path $artifactPath)) {
+            Write-Host "Error: Build artifact not found for ${{ matrix.os }}-${{ matrix.arch }}"
+            Write-Host "Searched in: src-tauri\target\${{ matrix.target }}\release"
+            Get-ChildItem -Path "src-tauri\target\${{ matrix.target }}\release" -Recurse -File | Select-Object FullName
+            exit 1
+          }
+          
+          $artifactName = "${{ matrix.artifact-name }}$artifactExt"
+          "ARTIFACT_PATH=$artifactPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "ARTIFACT_NAME=$artifactName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Found artifact: $artifactPath"
+
+      - name: Find and package artifacts (macOS/Linux)
+        if: matrix.os != 'windows-latest'
         shell: bash
         run: |
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            # Windows: find .msi installer
-            ARTIFACT_PATH=$(find src-tauri/target/${{ matrix.target }}/release/bundle/msi -name "*.msi" 2>/dev/null | head -1)
-            if [ -z "$ARTIFACT_PATH" ]; then
-              # Fallback to .exe if .msi not found
-              ARTIFACT_PATH=$(find src-tauri/target/${{ matrix.target }}/release -name "*.exe" -not -path "*/bundle/*" 2>/dev/null | head -1)
-            fi
-            ARTIFACT_NAME="${{ matrix.artifact-name }}.${ARTIFACT_PATH##*.}"
-          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
             # macOS: find .dmg installer
             ARTIFACT_PATH=$(find src-tauri/target/${{ matrix.target }}/release/bundle/dmg -name "*.dmg" 2>/dev/null | head -1)
             ARTIFACT_NAME="${{ matrix.artifact-name }}.dmg"

@@ -13,7 +13,7 @@ pub fn run() {
 	#[cfg(debug_assertions)]
 	{
 		if let Err(e) = dotenvy::dotenv() {
-			eprintln!("Warning: Could not load .env file: {}", e);
+			eprintln!("Warning: Could not load .env file: {e}");
 		}
 	}
 
@@ -31,7 +31,7 @@ pub fn run() {
 						responder.respond(response)
 					}
 					Err(e) => {
-						eprintln!("❌ Protocol error: {}", e);
+						eprintln!("❌ Protocol error: {e}");
 						responder.respond(
 							tauri::http::Response::builder()
 								.status(500)
@@ -74,7 +74,7 @@ pub fn run() {
 					)
 					.await
 					{
-						eprintln!("Failed to regenerate missing thumbnails: {}", e);
+						eprintln!("Failed to regenerate missing thumbnails: {e}");
 					}
 				});
 

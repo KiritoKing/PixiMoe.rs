@@ -98,7 +98,7 @@ pub fn generate_thumbnail(
 
 	// Load the image with optimized decoder
 	let img = image::open(image_path)
-		.map_err(|e| AppError::Custom(format!("Failed to load image: {}", e)))?;
+		.map_err(|e| AppError::Custom(format!("Failed to load image: {e}")))?;
 
 	// Smart cropping: maintain aspect ratio and center crop
 	let thumb = resize_and_crop(&img, thumbnail_size);
@@ -131,9 +131,7 @@ fn resize_and_crop(img: &DynamicImage, size: u32) -> DynamicImage {
 			return img.to_rgba8().into();
 		}
 		// Close enough, use faster resize
-		return img
-			.resize_exact(size, size, image::imageops::FilterType::Triangle)
-			.into();
+		return img.resize_exact(size, size, image::imageops::FilterType::Triangle);
 	}
 
 	// Calculate the scaling factor to fit the image into the square
@@ -183,7 +181,7 @@ pub fn get_thumbnail_dir(app: &AppHandle) -> Result<PathBuf, AppError> {
 	let app_data_dir = app
 		.path()
 		.app_data_dir()
-		.map_err(|e| AppError::Custom(format!("Failed to get app data dir: {}", e)))?;
+		.map_err(|e| AppError::Custom(format!("Failed to get app data dir: {e}")))?;
 	Ok(app_data_dir.join("thumbnails"))
 }
 
@@ -207,7 +205,7 @@ async fn tag_file_automatically(
 	if !tagger::is_model_available() {
 		let error_msg =
 			"AI model not available. Please check models/README.md for setup instructions.";
-		eprintln!("[AI Tagging] ERROR: {}", error_msg);
+		eprintln!("[AI Tagging] ERROR: {error_msg}");
 		return Err(AppError::Custom(error_msg.to_string()));
 	}
 
@@ -216,7 +214,7 @@ async fn tag_file_automatically(
 		"ai_tagging_progress",
 		ProgressEvent {
 			stage: "classifying".to_string(),
-			message: format!("Running AI inference for {}...", file_hash),
+			message: format!("Running AI inference for {file_hash}..."),
 			file_hash: Some(file_hash.to_string()),
 			current: None,
 			total: None,
@@ -235,8 +233,8 @@ async fn tag_file_automatically(
 			preds
 		}
 		Err(e) => {
-			let error_msg = format!("AI inference failed for {}: {}", file_hash, e);
-			eprintln!("[AI Tagging] ERROR: {}", error_msg);
+			let error_msg = format!("AI inference failed for {file_hash}: {e}");
+			eprintln!("[AI Tagging] ERROR: {error_msg}");
 			return Err(e);
 		}
 	};
@@ -247,7 +245,7 @@ async fn tag_file_automatically(
 		"ai_tagging_progress",
 		ProgressEvent {
 			stage: "saving_tags".to_string(),
-			message: format!("Saving {} tags for {}...", tag_count, file_hash),
+			message: format!("Saving {tag_count} tags for {file_hash}..."),
 			file_hash: Some(file_hash.to_string()),
 			current: None,
 			total: None,
@@ -308,10 +306,7 @@ async fn tag_file_automatically(
 		}
 	}
 
-	eprintln!(
-		"[AI Tagging] Completed for {}: {} tags added",
-		file_hash, added_count
-	);
+	eprintln!("[AI Tagging] Completed for {file_hash}: {added_count} tags added");
 	Ok(added_count)
 }
 
@@ -327,7 +322,7 @@ pub async fn import_file(
 	tag_names: Option<Vec<String>>,
 	enable_ai_tagging: Option<bool>,
 ) -> Result<ImportResult, AppError> {
-	eprintln!("=== Starting import for: {} ===", path);
+	eprintln!("=== Starting import for: {path} ===");
 	let file_path = PathBuf::from(&path);
 
 	// Emit progress: hashing
@@ -347,12 +342,12 @@ pub async fn import_file(
 	// Get file metadata
 	let metadata = fs::metadata(&file_path)?;
 	let file_size_bytes = metadata.len() as i64;
-	eprintln!("File size: {} bytes", file_size_bytes);
+	eprintln!("File size: {file_size_bytes} bytes");
 
 	// Calculate hash
 	eprintln!("Calculating BLAKE3 hash...");
 	let file_hash = calculate_blake3_hash(&file_path)?;
-	eprintln!("Hash calculated: {}", file_hash);
+	eprintln!("Hash calculated: {file_hash}");
 
 	// Check for duplicates
 	eprintln!("Checking for duplicates...");
@@ -371,20 +366,20 @@ pub async fn import_file(
 	// Get image dimensions
 	eprintln!("Getting image dimensions...");
 	let (width, height) = image::image_dimensions(&file_path)
-		.map_err(|e| AppError::Custom(format!("Failed to get image dimensions: {}", e)))?;
-	eprintln!("Dimensions: {}x{}", width, height);
+		.map_err(|e| AppError::Custom(format!("Failed to get image dimensions: {e}")))?;
+	eprintln!("Dimensions: {width}x{height}");
 
 	// Get file modified time (Unix timestamp)
 	let file_last_modified = metadata
 		.modified()?
 		.duration_since(std::time::UNIX_EPOCH)
-		.map_err(|e| AppError::Custom(format!("Invalid file time: {}", e)))?
+		.map_err(|e| AppError::Custom(format!("Invalid file time: {e}")))?
 		.as_secs() as i64;
 
 	// Get current time for date_imported (Unix timestamp)
 	let date_imported = std::time::SystemTime::now()
 		.duration_since(std::time::UNIX_EPOCH)
-		.map_err(|e| AppError::Custom(format!("Invalid system time: {}", e)))?
+		.map_err(|e| AppError::Custom(format!("Invalid system time: {e}")))?
 		.as_secs() as i64;
 
 	// Emit progress: saving
@@ -462,7 +457,7 @@ pub async fn import_file(
 		let _permit = THUMBNAIL_SEMAPHORE.acquire().await;
 
 		// Check if thumbnail already exists before generating
-		let thumbnail_path = thumbnail_dir.join(format!("{}.webp", file_hash_thumbnail));
+		let thumbnail_path = thumbnail_dir.join(format!("{file_hash_thumbnail}.webp"));
 		if thumbnail_path.exists() {
 			// Thumbnail already exists, emit complete event
 			app_thumbnail
@@ -470,7 +465,7 @@ pub async fn import_file(
 					"thumbnail_progress",
 					ProgressEvent {
 						stage: "complete".to_string(),
-						message: format!("Thumbnail already exists for {}", file_hash_thumbnail),
+						message: format!("Thumbnail already exists for {file_hash_thumbnail}"),
 						file_hash: Some(file_hash_thumbnail.clone()),
 						current: None,
 						total: None,
@@ -486,7 +481,7 @@ pub async fn import_file(
 				"thumbnail_progress",
 				ProgressEvent {
 					stage: "generating".to_string(),
-					message: format!("Generating thumbnail for {}...", file_hash_thumbnail),
+					message: format!("Generating thumbnail for {file_hash_thumbnail}..."),
 					file_hash: Some(file_hash_thumbnail.clone()),
 					current: None,
 					total: None,
@@ -508,7 +503,7 @@ pub async fn import_file(
 						"thumbnail_progress",
 						ProgressEvent {
 							stage: "complete".to_string(),
-							message: format!("Thumbnail complete for {}", file_hash_thumbnail),
+							message: format!("Thumbnail complete for {file_hash_thumbnail}"),
 							file_hash: Some(file_hash_thumbnail.clone()),
 							current: None,
 							total: None,
@@ -523,7 +518,7 @@ pub async fn import_file(
 						ProgressEvent {
 							stage: "error".to_string(),
 							file_hash: Some(file_hash_thumbnail.clone()),
-							message: format!("Thumbnail failed for {}: {}", file_hash_thumbnail, e),
+							message: format!("Thumbnail failed for {file_hash_thumbnail}: {e}"),
 							current: None,
 							total: None,
 						},
@@ -538,8 +533,7 @@ pub async fn import_file(
 							stage: "error".to_string(),
 							file_hash: Some(file_hash_thumbnail.clone()),
 							message: format!(
-								"Thumbnail task failed for {}: {}",
-								file_hash_thumbnail, e
+								"Thumbnail task failed for {file_hash_thumbnail}: {e}"
 							),
 							current: None,
 							total: None,
@@ -553,10 +547,7 @@ pub async fn import_file(
 
 	// Check if AI tagging should be enabled (but don't start it yet - wait for all imports to complete)
 	// Log the received value for debugging
-	eprintln!(
-		"[Import] AI tagging option received: {:?}",
-		enable_ai_tagging
-	);
+	eprintln!("[Import] AI tagging option received: {enable_ai_tagging:?}");
 	// Only enable if explicitly set to true
 	// If None (not provided), default to false to respect explicit user choice
 	// If Some(false), explicitly disabled
@@ -575,10 +566,7 @@ pub async fn import_file(
 	// This prevents AI tagging from starting before import is complete
 
 	// Import is complete - return immediately without waiting for AI tagging
-	eprintln!(
-		"=== Import complete for: {} (AI tagging in progress) ===",
-		file_hash
-	);
+	eprintln!("=== Import complete for: {file_hash} (AI tagging in progress) ===");
 	Ok(ImportResult {
 		file_hash,
 		is_duplicate: false,
@@ -691,10 +679,9 @@ pub async fn search_files_by_tags(
                f.width, f.height, f.date_imported, f.is_missing
         FROM Files f
         INNER JOIN FileTags ft ON f.file_hash = ft.file_hash
-        WHERE f.is_missing = 0 AND ft.tag_id IN ({})
+        WHERE f.is_missing = 0 AND ft.tag_id IN ({placeholders})
         ORDER BY f.date_imported DESC
-        "#,
-		placeholders
+        "#
 	);
 
 	let mut query_builder = sqlx::query(&query);
@@ -728,7 +715,7 @@ pub async fn search_files_by_tags(
 #[tauri::command]
 pub fn get_thumbnail_url(_app: AppHandle, file_hash: String) -> Result<String, AppError> {
 	// Convert to asset URL (thumbnail directory is handled by the asset protocol)
-	let url = format!("app-asset://localhost/thumbnails/{}.webp", file_hash);
+	let url = format!("app-asset://localhost/thumbnails/{file_hash}.webp");
 
 	Ok(url)
 }
@@ -798,7 +785,7 @@ pub async fn regenerate_missing_thumbnails(
 				generate_thumbnail(&original_path_clone, &thumbnail_path_clone, 400)
 			})
 			.await
-			.map_err(|e| AppError::Custom(format!("Task join error: {}", e)))?
+			.map_err(|e| AppError::Custom(format!("Task join error: {e}")))?
 			.map(|_| ())
 		});
 
@@ -812,10 +799,10 @@ pub async fn regenerate_missing_thumbnails(
 				regenerated_count += 1;
 			}
 			Ok(Err(e)) => {
-				eprintln!("Thumbnail generation failed for {}: {}", file_hash, e);
+				eprintln!("Thumbnail generation failed for {file_hash}: {e}");
 			}
 			Err(e) => {
-				eprintln!("Thumbnail task panicked for {}: {}", file_hash, e);
+				eprintln!("Thumbnail task panicked for {file_hash}: {e}");
 			}
 		}
 	}
@@ -843,7 +830,7 @@ pub async fn tag_file_with_ai(
 	)
 	.fetch_optional(pool.inner())
 	.await?
-	.ok_or_else(|| AppError::Custom(format!("File not found: {}", file_hash)))?;
+	.ok_or_else(|| AppError::Custom(format!("File not found: {file_hash}")))?;
 
 	let file_path = PathBuf::from(&file.original_path);
 	if !file_path.exists() {
@@ -861,10 +848,7 @@ pub async fn tag_file_with_ai(
 		"ai_tagging_progress",
 		ProgressEvent {
 			stage: "complete".to_string(),
-			message: format!(
-				"AI tagging complete for {}: {} tags added",
-				file_hash, tag_count
-			),
+			message: format!("AI tagging complete for {file_hash}: {tag_count} tags added"),
 			file_hash: None,
 			current: None,
 			total: None,
@@ -911,8 +895,7 @@ pub async fn tag_files_batch(
 							ProgressEvent {
 								stage: "complete".to_string(),
 								message: format!(
-									"AI tagging complete for {} ({}/{}): {} tags added",
-									file_hash, processed, total, tag_count
+									"AI tagging complete for {file_hash} ({processed}/{total}): {tag_count} tags added"
 								),
 								file_hash: None,
 								current: Some(processed),
@@ -922,13 +905,13 @@ pub async fn tag_files_batch(
 						.ok();
 					}
 					Err(e) => {
-						eprintln!("AI tagging failed for {}: {}", file_hash, e);
+						eprintln!("AI tagging failed for {file_hash}: {e}");
 						// Emit error but continue with other files
 						app.emit(
 							"ai_tagging_progress",
 							ProgressEvent {
 								stage: "error".to_string(),
-								message: format!("AI tagging error for {}: {}", file_hash, e),
+								message: format!("AI tagging error for {file_hash}: {e}"),
 								file_hash: None,
 								current: Some(processed),
 								total: Some(total),
@@ -943,7 +926,7 @@ pub async fn tag_files_batch(
 					"ai_tagging_progress",
 					ProgressEvent {
 						stage: "skipped".to_string(),
-						message: format!("Skipped {}: original file not found", file_hash),
+						message: format!("Skipped {file_hash}: original file not found"),
 						file_hash: None,
 						current: Some(processed),
 						total: Some(total),
@@ -957,7 +940,7 @@ pub async fn tag_files_batch(
 				"ai_tagging_progress",
 				ProgressEvent {
 					stage: "skipped".to_string(),
-					message: format!("Skipped {}: not found in database", file_hash),
+					message: format!("Skipped {file_hash}: not found in database"),
 					file_hash: None,
 					current: Some(processed),
 					total: Some(total),
@@ -973,8 +956,7 @@ pub async fn tag_files_batch(
 		ProgressEvent {
 			stage: "batch_complete".to_string(),
 			message: format!(
-				"Batch AI tagging complete: {} files processed, {} total tags added",
-				processed, total_tags
+				"Batch AI tagging complete: {processed} files processed, {total_tags} total tags added"
 			),
 			file_hash: None,
 			current: Some(processed),
@@ -1011,8 +993,7 @@ pub async fn test_ai_model(image_path: String) -> Result<TestModelResult, AppErr
 			execution_provider: "N/A".to_string(),
 			predictions: Vec::new(),
 			error: Some(format!(
-				"Model not available. Label map loaded: {}, Model session loaded: {}",
-				label_map_loaded, model_session_loaded
+				"Model not available. Label map loaded: {label_map_loaded}, Model session loaded: {model_session_loaded}"
 			)),
 		});
 	}
@@ -1027,7 +1008,7 @@ pub async fn test_ai_model(image_path: String) -> Result<TestModelResult, AppErr
 			inference_time_ms: 0,
 			execution_provider: "N/A".to_string(),
 			predictions: Vec::new(),
-			error: Some(format!("Image file not found: {}", image_path)),
+			error: Some(format!("Image file not found: {image_path}")),
 		});
 	}
 
@@ -1043,7 +1024,7 @@ pub async fn test_ai_model(image_path: String) -> Result<TestModelResult, AppErr
 				inference_time_ms: inference_start.elapsed().as_millis() as u64,
 				execution_provider: "Unknown".to_string(),
 				predictions: Vec::new(),
-				error: Some(format!("Inference failed: {}", e)),
+				error: Some(format!("Inference failed: {e}")),
 			});
 		}
 	};
@@ -1113,7 +1094,7 @@ pub async fn delete_file(
 	)
 	.fetch_optional(pool.inner())
 	.await?
-	.ok_or_else(|| AppError::Custom(format!("File not found: {}", file_hash)))?;
+	.ok_or_else(|| AppError::Custom(format!("File not found: {file_hash}")))?;
 
 	// Delete from database (this will cascade delete file_tags associations)
 	let result = sqlx::query!("DELETE FROM Files WHERE file_hash = ?", file_hash)
@@ -1122,14 +1103,13 @@ pub async fn delete_file(
 
 	if result.rows_affected() == 0 {
 		return Err(AppError::Custom(format!(
-			"Failed to delete file: {}",
-			file_hash
+			"Failed to delete file: {file_hash}"
 		)));
 	}
 
 	// Delete thumbnail file if it exists
 	let thumbnail_dir = get_thumbnail_dir(&app)?;
-	let thumbnail_path = thumbnail_dir.join(format!("{}.webp", file_hash));
+	let thumbnail_path = thumbnail_dir.join(format!("{file_hash}.webp"));
 	if thumbnail_path.exists() {
 		fs::remove_file(&thumbnail_path)?;
 	}
@@ -1178,7 +1158,7 @@ pub async fn delete_files_batch(
 
 				// Delete thumbnail file if it exists
 				let thumbnail_dir = get_thumbnail_dir(&app)?;
-				let thumbnail_path = thumbnail_dir.join(format!("{}.webp", file_hash));
+				let thumbnail_path = thumbnail_dir.join(format!("{file_hash}.webp"));
 				if thumbnail_path.exists() {
 					let _ = fs::remove_file(&thumbnail_path); // Ignore thumbnail deletion errors
 				}
@@ -1212,7 +1192,7 @@ pub async fn delete_files_batch(
 		"delete_progress",
 		ProgressEvent {
 			stage: "complete".to_string(),
-			message: format!("Batch deletion complete: {} files deleted", deleted_count),
+			message: format!("Batch deletion complete: {deleted_count} files deleted"),
 			file_hash: None,
 			current: Some(deleted_count),
 			total: Some(total),

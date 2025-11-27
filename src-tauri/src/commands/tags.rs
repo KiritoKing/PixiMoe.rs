@@ -240,7 +240,7 @@ pub async fn search_tags(
 	limit: Option<i64>,
 ) -> Result<Vec<Tag>, AppError> {
 	let limit = limit.unwrap_or(20);
-	let search_pattern = format!("{}%", prefix);
+	let search_pattern = format!("{prefix}%");
 
 	let tags = sqlx::query!(
 		r#"
