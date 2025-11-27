@@ -72,9 +72,12 @@ if [[ -n "$rust_files" ]]; then
             # Don't fail here, just format and continue
         fi
 
-        # Lint with clippy (skip for now due to SQLX dependencies)
-        log_step "Rust: Linting with clippy (skipped - SQLX requires database)"
-        log_warning "Skipping clippy due to SQLX database dependencies. Use 'pnpm check' manually when database is available."
+        # Lint with clippy (non-blocking due to SQLX dependencies)
+        log_step "Rust: Linting with clippy"
+        if ! cargo clippy --all-targets --all-features; then
+            log_warning "Clippy found issues in Rust files (non-blocking due to SQLX dependencies)"
+            log_warning "Consider running 'pnpm check' manually when database is available"
+        fi
     else
         log_error "Cargo not found. Please install Rust"
         exit_code=1
@@ -93,10 +96,15 @@ if [[ -n "$config_files" ]]; then
         if [[ -f "$file" ]]; then
             case "$file" in
                 *.json)
-                    if command_exists jq; then
+                    # Use Biome for JSON formatting if available, otherwise fallback
+                    if command_exists pnpm; then
+                        pnpm biome format --write "$file" && log_info "Formatted JSON: $file"
+                    elif command_exists npm; then
+                        npm run biome -- format --write "$file" && log_info "Formatted JSON: $file"
+                    elif command_exists biome; then
+                        biome format --write "$file" && log_info "Formatted JSON: $file"
+                    elif command_exists jq; then
                         jq '.' "$file" > "$file.tmp" && mv "$file.tmp" "$file" && log_info "Formatted JSON: $file"
-                    elif command_exists python3; then
-                        python3 -m json.tool "$file" > "$file.tmp" && mv "$file.tmp" "$file" && log_info "Formatted JSON: $file"
                     fi
                     ;;
                 *.yaml|*.yml)
@@ -109,7 +117,14 @@ if [[ -n "$config_files" ]]; then
                     log_info "TOML file: $file (no formatting applied)"
                     ;;
                 *.md)
-                    if command_exists prettier; then
+                    # Use Biome for Markdown formatting if available
+                    if command_exists pnpm; then
+                        pnpm biome format --write "$file" && log_info "Formatted Markdown: $file"
+                    elif command_exists npm; then
+                        npm run biome -- format --write "$file" && log_info "Formatted Markdown: $file"
+                    elif command_exists biome; then
+                        biome format --write "$file" && log_info "Formatted Markdown: $file"
+                    elif command_exists prettier; then
                         prettier --write "$file" && log_info "Formatted Markdown: $file"
                     fi
                     ;;
@@ -118,11 +133,29 @@ if [[ -n "$config_files" ]]; then
     done
 fi
 
-# 4. TypeScript Type Checking (temporarily skipped for testing)
+# 4. TypeScript Type Checking
 if [[ -n "$ts_js_files" ]]; then
     echo
-    log_step "🔍 TypeScript: Type checking (skipped for testing)"
-    log_warning "TypeScript type checking temporarily skipped. Use 'pnpm type-check' manually."
+    log_step "🔍 TypeScript: Type checking"
+
+    if command_exists pnpm; then
+        if ! pnpm tsc --noEmit; then
+            log_error "TypeScript type checking failed"
+            exit_code=1
+        fi
+    elif command_exists npm; then
+        if ! npm run lint; then
+            log_error "TypeScript type checking failed"
+            exit_code=1
+        fi
+    elif command_exists tsc; then
+        if ! tsc --noEmit; then
+            log_error "TypeScript type checking failed"
+            exit_code=1
+        fi
+    else
+        log_warning "TypeScript compiler not found, skipping type checking"
+    fi
 fi
 
 # 5. Re-stage formatted files
