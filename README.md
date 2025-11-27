@@ -12,18 +12,18 @@
 
 A blazing-fast local-first anime gallery built with Rust, featuring intelligent character recognition, Danbooru-style tagging, and kawaii organization! ✨
 
-[![GitHub stars](https://img.shields.io/github/stars/yourusername/piximoe.rs.svg?style=social&logo=github&label=Star)](https://github.com/yourusername/piximoe.rs)
-[![GitHub forks](https://img.shields.io/github/forks/yourusername/piximoe.rs.svg?style=social&logo=github&label=Fork)](https://github.com/yourusername/piximoe.rs)
-[![GitHub issues](https://img.shields.io/github/issues/yourusername/piximoe.rs.svg?style=for-the-badge&logo=github)](https://github.com/yourusername/piximoe.rs/issues)
+[![GitHub stars](https://img.shields.io/github/stars/KiritoKing/piximoe.rs.svg?style=social&logo=github&label=Star)](https://github.com/KiritoKing/piximoe.rs)
+[![GitHub forks](https://img.shields.io/github/forks/KiritoKing/piximoe.rs.svg?style=social&logo=github&label=Fork)](https://github.com/KiritoKing/piximoe.rs)
+[![GitHub issues](https://img.shields.io/github/issues/KiritoKing/piximoe.rs.svg?style=for-the-badge&logo=github)](https://github.com/KiritoKing/piximoe.rs/issues)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=for-the-badge&logo=appveyor)](https://github.com/yourusername/piximoe.rs)
-[![Version](https://img.shields.io/badge/version-0.1.0-red?style=for-the-badge&logo=semver)](https://github.com/yourusername/piximoe.rs)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/yourusername/piximoe.rs/ci.yml?style=for-the-badge&logo=github-actions)](https://github.com/yourusername/piximoe.rs/actions)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=for-the-badge&logo=appveyor)](https://github.com/KiritoKing/piximoe.rs)
+[![Version](https://img.shields.io/badge/version-0.1.0-red?style=for-the-badge&logo=semver)](https://github.com/KiritoKing/piximoe.rs)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/KiritoKing/piximoe.rs/ci.yml?style=for-the-badge&logo=github-actions)](https://github.com/KiritoKing/piximoe.rs/actions)
 
 ---
 
-![PixiMoe.rs Demo](https://via.placeholder.com/800x400/FF69B4/FFFFFF?text=PixiMoe.rs+Demo+Coming+Soon)
+![PixiMoe.rs Demo](./.github/hero.jpg)
 
 *🎀 Your kawaii anime gallery with AI magic!*
 
@@ -92,7 +92,7 @@ A blazing-fast local-first anime gallery built with Rust, featuring intelligent 
 
 ```bash
 # Clone the repository 🎀
-git clone https://github.com/yourusername/piximoe.rs.git
+git clone https://github.com/KiritoKing/piximoe.rs.git
 cd piximoe.rs
 
 # Install dependencies ✨
@@ -206,7 +206,7 @@ We love contributions! Whether you're fixing bugs, adding features, or improving
 
 ```bash
 # Fork & Clone 🔄
-git clone https://github.com/yourusername/piximoe.rs.git
+git clone https://github.com/KiritoKing/piximoe.rs.git
 cd piximoe.rs
 
 # Create Feature Branch 🌿
@@ -221,7 +221,7 @@ git push origin feature/your-kawaii-feature
 
 ### 🏆 Contributors
 
-![GitHub contributors](https://img.shields.io/github/contributors/yourusername/piximoe.rs?style=for-the-badge&logo=github)
+![GitHub contributors](https://img.shields.io/github/contributors/KiritoKing/piximoe.rs?style=for-the-badge&logo=github)
 
 **💖 Thank you to all our contributors!**
 
@@ -258,14 +258,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 [![Back to top](https://img.shields.io/badge/back%20to%20top-%23FF69B4.svg?style=for-the-badge&logo=rocket&logoColor=white)](#piximoers)
 
-![Star History](https://img.shields.io/github/stars/yourusername/piximoe.rs?style=social)
+![Star History](https://img.shields.io/github/stars/KiritoKing/piximoe.rs?style=social)
 
 **Made with 💖 and 🦀 for the anime community!**
 
 </div>
 
----
-
-## 🏷️ GitHub Tags
-
-`anime-gallery` `rust-lang` `tauri` `ai-powered` `danbooru` `character-recognition` `anime-management` `local-first` `privacy-first` `image-tagging` `computer-vision` `onnx` `sqlite` `cross-platform` `offline-first` `high-performance` `anime` `manga` `art-gallery` `kawaii` `piximoe`
