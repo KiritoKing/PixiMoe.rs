@@ -42,6 +42,11 @@ pub struct CategoryPredictions {
 // ============================================================================
 
 const MODEL_INPUT_SIZE: u32 = 448;
+const FALLBACK_MODEL_INPUT_SIZE: u32 = 448;
+
+/// Global variable to store detected model input size
+static DETECTED_MODEL_INPUT_SIZE: std::sync::atomic::AtomicU32 =
+	std::sync::atomic::AtomicU32::new(0);
 const CONFIDENCE_THRESHOLD: f32 = 0.50;
 const MAX_TAGS: usize = 50;
 
@@ -205,6 +210,31 @@ fn load_model() -> Result<Arc<Mutex<Session>>, AppError> {
 		}
 	};
 
+	let input_shape = session
+		.inputs
+		.first()
+		.and_then(|input| input.input_type.tensor_shape());
+
+	if let Some(shape) = input_shape {
+		if shape.len() >= 4 {
+			if let (Some(&height), Some(&width)) = (shape.get(1), shape.get(2)) {
+				if let (Ok(h), Ok(w)) = (
+					TryInto::<u32>::try_into(height),
+					TryInto::<u32>::try_into(width),
+				) {
+					ai_debug!("[AI Model] Detected input size: {}x{}", h, w);
+					if h == w {
+						ai_debug!("[AI Model] Using dynamic input size: {}", h);
+						// Store the detected size for use in preprocessing
+						DETECTED_MODEL_INPUT_SIZE.store(h, std::sync::atomic::Ordering::Relaxed);
+					} else {
+						ai_debug!("[AI Model] Non-square input detected, using fallback");
+					}
+				}
+			}
+		}
+	}
+
 	Ok(Arc::new(Mutex::new(session)))
 }
 
@@ -311,19 +341,32 @@ fn preprocess_image(image: DynamicImage) -> Result<Array4<f32>, AppError> {
 	// Step 3: Convert to RGB format (removing alpha channel)
 	let rgb_image = image::DynamicImage::ImageRgba8(canvas).to_rgb8();
 
+	// Use detected model input size, or fallback to default
+	let detected_size = DETECTED_MODEL_INPUT_SIZE.load(std::sync::atomic::Ordering::Relaxed);
+	let target_size = if detected_size > 0 {
+		detected_size
+	} else {
+		MODEL_INPUT_SIZE
+	};
+
+	ai_debug!(
+		"[AI Preprocess] Using target size: {}x{}",
+		target_size,
+		target_size
+	);
+
 	// Step 4: Resize to model input size using BICUBIC interpolation
 	let resized_image = image::DynamicImage::ImageRgb8(rgb_image);
 	let resized = resized_image.resize_exact(
-		MODEL_INPUT_SIZE,
-		MODEL_INPUT_SIZE,
+		target_size,
+		target_size,
 		image::imageops::FilterType::CatmullRom, // CatmullRom is equivalent to BICUBIC
 	);
 
 	// Step 5 & 6: Convert to BGR and normalize to [0.0, 1.0] range
-	// Create ndarray with shape [1, 448, 448, 3] (NHWC format)
-	// Model expects: batch=1, height=448, width=448, channels=3 in BGR order
-	let mut array =
-		Array4::<f32>::zeros((1, MODEL_INPUT_SIZE as usize, MODEL_INPUT_SIZE as usize, 3));
+	// Create ndarray with shape [1, target_size, target_size, 3] (NHWC format)
+	// Model expects: batch=1, height=target_size, width=target_size, channels=3 in BGR order
+	let mut array = Array4::<f32>::zeros((1, target_size as usize, target_size as usize, 3));
 
 	// Get the RGB image buffer directly
 	let rgb_buffer = resized
