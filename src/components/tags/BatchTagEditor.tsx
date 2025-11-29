@@ -97,12 +97,15 @@ export function BatchTagEditor({
 					</button>
 				</div>
 
-				{/* Common tags */}
+				{/* Common tags - optimized for performance */}
 				{commonTags.length > 0 && (
 					<div className="mb-4">
-						<h4 className="text-sm font-semibold mb-2">Common Tags</h4>
-						<div className="flex flex-wrap gap-2">
-							{commonTags.map((tag) => (
+						<h4 className="text-sm font-semibold mb-2">
+							Common Tags ({commonTags.length} total)
+						</h4>
+						<div className="flex flex-wrap gap-2 mb-2">
+							{/* Show first 30 common tags */}
+							{commonTags.slice(0, 30).map((tag) => (
 								<span
 									key={tag.tag_id}
 									className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded text-sm"
@@ -118,6 +121,11 @@ export function BatchTagEditor({
 								</span>
 							))}
 						</div>
+						{commonTags.length > 30 && (
+							<div className="text-xs text-muted-foreground">
+								Showing first 30 of {commonTags.length} common tags
+							</div>
+						)}
 					</div>
 				)}
 

@@ -2,7 +2,6 @@
 
 ## Purpose
 提供具体的UI组件实现，包括图片网格、标签面板、导入对话框、图片查看器、标签管理UI、通知系统等用户交互组件。
-
 ## Requirements
 ### Requirement: Image Grid Display Component
 The system SHALL provide a responsive grid component for displaying image thumbnails with selection support and virtual scrolling for performance optimization.
@@ -142,14 +141,6 @@ The system SHALL provide a modal dialog for importing files with progress feedba
 ### Requirement: Image Lightbox Viewer
 The system SHALL provide a modal viewer for displaying full-resolution images with navigation.
 
-#### Scenario: Lightbox opens on image click
-- **WHEN** user clicks image thumbnail in ImageGrid
-- **THEN** lightbox modal opens in fullscreen overlay
-- **AND** original image loads at full resolution from `original_path`
-- **AND** image is centered and scaled to fit viewport
-- **AND** black semi-transparent backdrop dims background content
-- **AND** close button (X) is visible in top-right corner
-
 #### Scenario: Image metadata is displayed
 - **WHEN** lightbox is open
 - **THEN** sidebar or overlay shows:
@@ -157,27 +148,12 @@ The system SHALL provide a modal viewer for displaying full-resolution images wi
   - Dimensions (width × height)
   - File size
   - Date imported
-  - List of associated tags (clickable)
+  - List of associated tags (clickable) - **ALL** tags are displayed without artificial limits
 - **AND** metadata is scrollable if list is long
-
-#### Scenario: Navigation between images
-- **WHEN** lightbox is open
-- **THEN** left/right arrow buttons are visible
-- **AND** clicking right arrow loads next image in current grid order
-- **AND** clicking left arrow loads previous image
-- **AND** keyboard arrows (←/→) work for navigation
-- **AND** first/last image disables appropriate arrow
-- **WHEN** user presses Escape key
-- **THEN** lightbox closes and returns to grid view
-
-#### Scenario: Loading states are handled
-- **WHEN** full-resolution image is loading
-- **THEN** thumbnail is shown as placeholder
-- **AND** loading spinner is displayed over placeholder
-- **AND** image fades in smoothly when loaded
-- **WHEN** image fails to load (missing file)
-- **THEN** error message is shown: "File not found"
-- **AND** user can navigate to next/previous image
+- **AND** tags are rendered in a flex-wrap layout that accommodates any number of tags
+- **AND** each tag includes a remove button for individual tag management
+- **AND** all tags maintain consistent styling regardless of total count
+- **AND** no arbitrary tag count limits are imposed (removed previous 20-tag limitation)
 
 ### Requirement: Manual Tag Management UI
 The system SHALL provide interface for users to add, remove, and batch-apply tags to images.

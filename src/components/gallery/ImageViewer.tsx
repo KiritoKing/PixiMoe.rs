@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Loader2, Wand2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Loader2, Wand2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import {
@@ -39,10 +39,28 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
 	const imageContainerRef = useRef<HTMLDivElement>(null);
 
 	const hasAITags = tags.some((tag) => tag.type === "ai-generated");
+	const aiTags = tags.filter((tag) => tag.type === "ai-generated");
 
 	const currentIndex = allFiles.findIndex((f) => f.file_hash === file.file_hash);
 	const canGoPrev = currentIndex > 0;
 	const canGoNext = currentIndex < allFiles.length - 1;
+
+	// Copy tags functionality
+	const handleCopyTags = useCallback(() => {
+		const tagsToCopy = aiTags.length > 0 ? aiTags : tags;
+		const tagNames = tagsToCopy.map((tag) => tag.name);
+		const commaSeparatedTags = tagNames.join(", ");
+
+		navigator.clipboard
+			.writeText(commaSeparatedTags)
+			.then(() => {
+				toast.success(`Copied ${tagsToCopy.length} tag(s) to clipboard!`);
+			})
+			.catch((error) => {
+				console.error("Failed to copy tags:", error);
+				toast.error("Failed to copy tags to clipboard");
+			});
+	}, [tags, aiTags]);
 
 	// Calculate initial scale to fit image width to container (prioritize width)
 	const calculateInitialScale = useCallback((imgWidth: number, imgHeight: number): number => {
@@ -301,7 +319,25 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
 								{/* Tags section */}
 								<div className="mb-4">
 									<div className="flex items-center justify-between mb-2">
-										<h4 className="text-sm font-semibold">Tags</h4>
+										<div className="flex items-center gap-2">
+											<h4 className="text-sm font-semibold">Tags</h4>
+											{tags.length > 0 && (
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={handleCopyTags}
+													className="flex items-center gap-1 text-xs"
+													title={
+														aiTags.length > 0
+															? `Copy ${aiTags.length} AI-generated tag(s)`
+															: `Copy all ${tags.length} tag(s)`
+													}
+												>
+													<Copy className="w-3 h-3" />
+													Copy
+												</Button>
+											)}
+										</div>
 										<Button
 											variant="outline"
 											size="sm"
@@ -318,23 +354,34 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
 											{aiTagMutation.isPending ? "Running..." : "AI Tag"}
 										</Button>
 									</div>
-									<div className="flex flex-wrap gap-2 mb-3">
-										{tags.map((tag) => (
-											<Badge
-												key={tag.tag_id}
-												variant="secondary"
-												className="gap-1"
-											>
-												{tag.name}
-												<button
-													type="button"
-													onClick={() => handleRemoveTag(tag.tag_id)}
-													className="hover:text-destructive"
-												>
-													<X className="w-3 h-3" />
-												</button>
-											</Badge>
-										))}
+									{/* Tags display - show all tags */}
+									<div className="mb-3">
+										{tags.length === 0 ? (
+											<div className="text-sm text-muted-foreground italic">
+												No tags assigned
+											</div>
+										) : (
+											<div className="flex flex-wrap gap-2">
+												{tags.map((tag) => (
+													<Badge
+														key={tag.tag_id}
+														variant="secondary"
+														className="gap-1"
+													>
+														{tag.name}
+														<button
+															type="button"
+															onClick={() =>
+																handleRemoveTag(tag.tag_id)
+															}
+															className="hover:text-destructive"
+														>
+															<X className="w-3 h-3" />
+														</button>
+													</Badge>
+												))}
+											</div>
+										)}
 									</div>
 
 									{/* Add new tags */}

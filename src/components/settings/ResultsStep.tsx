@@ -1,4 +1,13 @@
-import { CheckCircle, Download, FileText, RotateCcw, Timer, TrendingUp, Zap } from "lucide-react";
+import {
+	CheckCircle,
+	Copy,
+	Download,
+	FileText,
+	RotateCcw,
+	Timer,
+	TrendingUp,
+	Zap,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +35,69 @@ export function ResultsStep({
 }: ResultsStepProps) {
 	const allSuccessful =
 		preprocessResult?.success && inferenceResult?.success && postprocessResult?.success;
+
+	// Copy tags functionality
+	const handleCopyTags = () => {
+		if (!postprocessResult?.final_tags || postprocessResult.final_tags.length === 0) return;
+
+		const tagNames = postprocessResult.final_tags.map(([tag]) => tag);
+		const commaSeparatedTags = tagNames.join(", ");
+
+		navigator.clipboard
+			.writeText(commaSeparatedTags)
+			.then(() => {
+				// Create a simple success notification without external dependencies
+				const notification = document.createElement("div");
+				notification.style.cssText = `
+					position: fixed;
+					top: 20px;
+					right: 20px;
+					background: #22c55e;
+					color: white;
+					padding: 12px 16px;
+					border-radius: 6px;
+					z-index: 9999;
+					font-size: 14px;
+					font-family: system-ui;
+					box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+				`;
+				notification.textContent = `Copied ${postprocessResult.final_tags.length} tag(s) to clipboard!`;
+				document.body.appendChild(notification);
+
+				// Remove after 3 seconds
+				setTimeout(() => {
+					if (document.body.contains(notification)) {
+						document.body.removeChild(notification);
+					}
+				}, 3000);
+			})
+			.catch((error) => {
+				console.error("Failed to copy tags:", error);
+				// Show error notification
+				const notification = document.createElement("div");
+				notification.style.cssText = `
+					position: fixed;
+					top: 20px;
+					right: 20px;
+					background: #ef4444;
+					color: white;
+					padding: 12px 16px;
+					border-radius: 6px;
+					z-index: 9999;
+					font-size: 14px;
+					font-family: system-ui;
+					box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+				`;
+				notification.textContent = "Failed to copy tags to clipboard";
+				document.body.appendChild(notification);
+
+				setTimeout(() => {
+					if (document.body.contains(notification)) {
+						document.body.removeChild(notification);
+					}
+				}, 3000);
+			});
+	};
 
 	const generateSummary = () => {
 		if (!allSuccessful) return null;
@@ -159,9 +231,21 @@ export function ResultsStep({
 							{postprocessResult?.final_tags &&
 								postprocessResult.final_tags.length > 0 && (
 									<div className="space-y-2">
-										<Label className="text-sm font-medium">
-											Top Final Tags
-										</Label>
+										<div className="flex items-center justify-between">
+											<Label className="text-sm font-medium">
+												Top Final Tags
+											</Label>
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={handleCopyTags}
+												className="flex items-center gap-1 text-xs"
+												title={`Copy all ${postprocessResult.final_tags.length} tags`}
+											>
+												<Copy className="w-3 h-3" />
+												Copy All
+											</Button>
+										</div>
 										<div className="flex flex-wrap gap-1">
 											{postprocessResult.final_tags
 												.slice(0, 15)

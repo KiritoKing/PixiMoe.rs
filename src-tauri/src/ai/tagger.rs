@@ -110,10 +110,11 @@ fn load_label_map() -> Result<HashMap<usize, (String, u32)>, AppError> {
 
 		let parts: Vec<&str> = line.split(',').collect();
 		if parts.len() >= 4 {
-			if let (Ok(tag_id), Ok(category)) = (parts[0].parse::<usize>(), parts[2].parse::<u32>())
-			{
+			// Use row index as key, not tag_id
+			let row_index = idx - 1; // Skip header row
+			if let Ok(category) = parts[2].parse::<u32>() {
 				let name = parts[1].to_string();
-				map.insert(tag_id, (name, category));
+				map.insert(row_index, (name, category));
 			}
 		}
 	}
@@ -317,7 +318,7 @@ fn get_models_dir() -> Result<PathBuf, AppError> {
 /// 3. Pad image to square shape (centered on white background)
 /// 4. Resize padded image to 448x448 using BICUBIC interpolation
 /// 5. Convert RGB channels to BGR format
-/// 6. Normalize pixel values to [0.0, 1.0] range
+/// 6. Keep pixel values in [0.0, 255.0] range (SwinV2/WD14 models expect this range)
 /// 7. Convert to NHWC format (batch, height, width, channels) - model expects this format
 fn preprocess_image(image: DynamicImage) -> Result<Array4<f32>, AppError> {
 	// Step 1: Convert to RGBA if needed
@@ -374,10 +375,10 @@ fn preprocess_image(image: DynamicImage) -> Result<Array4<f32>, AppError> {
 		.ok_or_else(|| AppError::Custom("Failed to get RGB buffer".to_string()))?;
 
 	for (x, y, pixel) in rgb_buffer.enumerate_pixels() {
-		// Step 6: Normalize pixel values to [0.0, 1.0] range
-		let r = pixel[0] as f32 / 255.0;
-		let g = pixel[1] as f32 / 255.0;
-		let b = pixel[2] as f32 / 255.0;
+		// Step 6: Keep pixel values in [0.0, 255.0] range (SwinV2/WD14 models expect this range)
+		let r = pixel[0] as f32;
+		let g = pixel[1] as f32;
+		let b = pixel[2] as f32;
 
 		// Step 5: Convert RGB to BGR format
 		// NHWC format: [batch, height, width, channel] with BGR order
@@ -585,6 +586,27 @@ pub async fn classify_image_with_params(
 	let label_map = LABEL_MAP
 		.as_ref()
 		.map_err(|e| AppError::Custom(format!("Label map not loaded: {e}")))?;
+
+	// Debug: Print top predictions before filtering
+	ai_debug!("[AI Debug] Top 10 predictions before filtering:");
+	let mut debug_vec: Vec<(usize, f32)> = predictions
+		.iter()
+		.enumerate()
+		.take(10)
+		.map(|(i, &c)| (i, c))
+		.collect();
+	debug_vec.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+	for (idx, conf) in debug_vec {
+		if let Some((name, category)) = label_map.get(&idx) {
+			ai_debug!(
+				"[AI Debug]  {} ({}): {} - category {}",
+				idx,
+				name,
+				conf,
+				category
+			);
+		}
+	}
 
 	// Separate predictions by category
 	let mut rating_predictions = Vec::new();
