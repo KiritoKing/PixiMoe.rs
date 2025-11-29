@@ -205,7 +205,7 @@ async fn tag_file_automatically(
 	if !tagger::is_model_available() {
 		let error_msg =
 			"AI model not available. Please check models/README.md for setup instructions.";
-		eprintln!("[AI Tagging] ERROR: {error_msg}");
+		ai_error!("[AI Tagging] ERROR: {error_msg}");
 		return Err(AppError::Custom(error_msg.to_string()));
 	}
 
@@ -222,8 +222,24 @@ async fn tag_file_automatically(
 	)
 	.ok();
 
-	// Run AI classification
-	let predictions = match tagger::classify_image(file_path).await {
+	// Load inference configuration
+	let inference_params = match crate::commands::settings::get_inference_config(app.clone()).await
+	{
+		Ok(config) => tagger::InferenceParams {
+			general_threshold: config.general_threshold,
+			character_threshold: config.character_threshold,
+			general_mcut_enabled: config.general_mcut_enabled,
+			character_mcut_enabled: config.character_mcut_enabled,
+			max_tags: config.max_tags,
+		},
+		Err(e) => {
+			ai_debug!("[AI Tagging] Warning: Failed to load inference config: {e}, using defaults");
+			tagger::InferenceParams::default()
+		}
+	};
+
+	// Run AI classification with custom parameters
+	let predictions = match tagger::classify_image_with_params(file_path, &inference_params).await {
 		Ok(preds) => {
 			eprintln!(
 				"[AI Tagging] Inference completed for {}: {} predictions",
@@ -234,7 +250,7 @@ async fn tag_file_automatically(
 		}
 		Err(e) => {
 			let error_msg = format!("AI inference failed for {file_hash}: {e}");
-			eprintln!("[AI Tagging] ERROR: {error_msg}");
+			ai_error!("[AI Tagging] ERROR: {error_msg}");
 			return Err(e);
 		}
 	};
@@ -306,7 +322,7 @@ async fn tag_file_automatically(
 		}
 	}
 
-	eprintln!("[AI Tagging] Completed for {file_hash}: {added_count} tags added");
+	ai_debug!("[AI Tagging] Completed for {file_hash}: {added_count} tags added");
 	Ok(added_count)
 }
 
@@ -822,6 +838,12 @@ pub async fn tag_file_with_ai(
 	pool: tauri::State<'_, SqlitePool>,
 	file_hash: String,
 ) -> Result<usize, AppError> {
+	// Check if AI is enabled
+	let ai_enabled = crate::commands::settings::is_ai_enabled(app.clone()).await?;
+	if !ai_enabled {
+		return Err(AppError::Custom("AI features are disabled".to_string()));
+	}
+
 	// Get file info from database
 	let file = sqlx::query_as!(
 		FileRecord,
@@ -866,6 +888,12 @@ pub async fn tag_files_batch(
 	pool: tauri::State<'_, SqlitePool>,
 	file_hashes: Vec<String>,
 ) -> Result<usize, AppError> {
+	// Check if AI is enabled
+	let ai_enabled = crate::commands::settings::is_ai_enabled(app.clone()).await?;
+	if !ai_enabled {
+		return Err(AppError::Custom("AI features are disabled".to_string()));
+	}
+
 	let mut total_tags = 0;
 	let mut processed = 0;
 	let total = file_hashes.len();
@@ -971,7 +999,23 @@ pub async fn tag_files_batch(
 /// Test AI model loading and inference
 /// Returns model status, inference results, timing, and execution provider info
 #[tauri::command]
-pub async fn test_ai_model(image_path: String) -> Result<TestModelResult, AppError> {
+pub async fn test_ai_model(
+	app: AppHandle,
+	image_path: String,
+) -> Result<TestModelResult, AppError> {
+	// Check if AI is enabled
+	let ai_enabled = crate::commands::settings::is_ai_enabled(app.clone()).await?;
+	if !ai_enabled {
+		return Ok(TestModelResult {
+			success: false,
+			model_status: tagger::get_model_status()?,
+			model_check_time_ms: 0,
+			inference_time_ms: 0,
+			execution_provider: "N/A".to_string(),
+			predictions: Vec::new(),
+			error: Some("AI features are disabled".to_string()),
+		});
+	}
 	use crate::ai::tagger;
 	use std::time::Instant;
 

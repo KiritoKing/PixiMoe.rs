@@ -11,6 +11,12 @@ pub enum AppError {
 	#[error("Tauri error: {0}")]
 	Tauri(#[from] tauri::Error),
 
+	#[error("Store error: {0}")]
+	Store(#[from] tauri_plugin_store::Error),
+
+	#[error("Image error: {0}")]
+	Image(#[from] image::ImageError),
+
 	#[error("{0}")]
 	Custom(String),
 }

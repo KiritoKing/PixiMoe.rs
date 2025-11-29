@@ -4,6 +4,7 @@ import { Toaster } from "react-hot-toast";
 import { ImageGrid } from "./components/gallery/ImageGrid";
 import { ImportButton } from "./components/import/ImportButton";
 import { NotificationCenter } from "./components/notifications/NotificationCenter";
+import { SettingsPanel } from "./components/settings/SettingsPanel";
 import { TagFilterPanel } from "./components/tags/TagFilterPanel";
 import { ThemeToggle } from "./components/theme-toggle";
 import { useFiles } from "./lib/hooks/useFiles";
@@ -81,6 +82,7 @@ function App() {
 						<ThemeToggle />
 						<NotificationCenter />
 						<ImportButton />
+						<SettingsPanel />
 					</div>
 				</div>
 

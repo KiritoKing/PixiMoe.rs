@@ -171,3 +171,35 @@ body {
     letter-spacing: var(--tracking-normal);
   }
 }
+
+/* Fix for settings panel double shadow/ghosting during close animation */
+@layer components {
+  .settings-sheet-content {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, box-shadow;
+  }
+
+  .settings-sheet-content[data-state="closed"] {
+    box-shadow: none;
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  .settings-sheet-content[data-state="open"] {
+    box-shadow: var(--shadow-lg);
+    transform: translateX(0%);
+    opacity: 1;
+  }
+
+  .settings-sheet-content[data-state="closing"] {
+    box-shadow: none;
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  .settings-sheet-content[data-state="opening"] {
+    box-shadow: var(--shadow-lg);
+    transform: translateX(0%);
+    opacity: 1;
+  }
+}
