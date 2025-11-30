@@ -209,21 +209,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             gcc-aarch64-linux-gnu \
-            libc6-dev-arm64-cross
+            libc6-dev-arm64-cross \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            pkg-config
 
       - name: Build Tauri application
         run: pnpm tauri build --target ${{ matrix.target }}
         env:
           # Enable SQLx offline mode (build.rs also sets this)
           SQLX_OFFLINE: true
-          # Set environment variables for cross-compilation if needed (Linux ARM64 only)
+          # Configure basic cross-compilation for ARM64
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
           CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
-          AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
-          # Configure pkg-config for cross-compilation (Linux ARM64 only)
-          PKG_CONFIG_ALLOW_CROSS: 1
-          PKG_CONFIG_PATH: ""
-          PKG_CONFIG_LIBDIR: /usr/lib/aarch64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
 
       - name: Find and package artifacts (Windows)
         if: matrix.os == 'windows-latest'
