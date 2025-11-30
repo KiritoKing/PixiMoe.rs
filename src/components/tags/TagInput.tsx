@@ -15,7 +15,9 @@ interface TagInputProps {
 export function TagInput({ value, onChange, placeholder = "Add tags..." }: TagInputProps) {
 	const [input, setInput] = useState("");
 	const [showSuggestions, setShowSuggestions] = useState(false);
+	const [showSuggestionsAbove, setShowSuggestionsAbove] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
 	const { data: suggestions = [] } = useSearchTags(input);
 	const { data: allTags = [] } = useTags();
 	const { data: categories } = useCategories();
@@ -23,6 +25,43 @@ export function TagInput({ value, onChange, placeholder = "Add tags..." }: TagIn
 	useEffect(() => {
 		setShowSuggestions(input.length > 0 && suggestions.length > 0);
 	}, [input, suggestions]);
+
+	// 检测输入框位置，决定suggestions向上还是向下展开
+	useEffect(() => {
+		if (!showSuggestions || !containerRef.current) return;
+
+		const checkPosition = () => {
+			const container = containerRef.current;
+			if (!container) return;
+
+			const rect = container.getBoundingClientRect();
+			const viewportHeight = window.innerHeight;
+			const spaceBelow = viewportHeight - rect.bottom;
+			const spaceAbove = rect.top;
+			const suggestionsHeight = 200; // max-h-[200px]
+
+			// 如果下方空间不足，且上方空间足够，则向上展开
+			if (spaceBelow < suggestionsHeight && spaceAbove > suggestionsHeight) {
+				setShowSuggestionsAbove(true);
+			} else {
+				setShowSuggestionsAbove(false);
+			}
+		};
+
+		checkPosition();
+
+		// 监听滚动和窗口大小变化
+		const handleScroll = () => checkPosition();
+		const handleResize = () => checkPosition();
+
+		window.addEventListener("scroll", handleScroll, true);
+		window.addEventListener("resize", handleResize);
+
+		return () => {
+			window.removeEventListener("scroll", handleScroll, true);
+			window.removeEventListener("resize", handleResize);
+		};
+	}, [showSuggestions]);
 
 	const handleAddTag = (tagName: string) => {
 		const trimmed = tagName.trim();
@@ -52,7 +91,7 @@ export function TagInput({ value, onChange, placeholder = "Add tags..." }: TagIn
 	};
 
 	return (
-		<div className="relative w-full">
+		<div ref={containerRef} className="relative w-full">
 			<div className="flex flex-wrap gap-2 p-2 border rounded-md min-h-[42px]">
 				{value.map((tagName) => {
 					const tag = allTags.find((t) => t.name === tagName);
@@ -98,7 +137,11 @@ export function TagInput({ value, onChange, placeholder = "Add tags..." }: TagIn
 
 			{/* Autocomplete suggestions */}
 			{showSuggestions && (
-				<div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+				<div
+					className={`absolute z-50 w-full bg-popover border rounded-md shadow-lg max-h-[200px] overflow-y-auto ${
+						showSuggestionsAbove ? "bottom-full mb-1" : "top-full mt-1"
+					}`}
+				>
 					{suggestions.map((tag) => (
 						<button
 							key={tag.tag_id}

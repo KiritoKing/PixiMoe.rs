@@ -18,7 +18,7 @@ pub async fn clear_database(
 	confirmation: String,
 ) -> Result<ClearDatabaseResult, AppError> {
 	// Verify confirmation text matches expected value
-	let required_confirmation = "CLEAR_ALL_DATA_PERMANENTLY_清空所有数据_永久删除";
+	let required_confirmation = "CLEAR_ALL_DATA_PERMANENTLY";
 	if confirmation != required_confirmation {
 		return Err(AppError::Custom("Invalid confirmation text".to_string()));
 	}

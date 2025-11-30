@@ -31,7 +31,7 @@ export function ClearDatabaseDialog({ isOpen, onClose }: ClearDatabaseDialogProp
 	const progress = useClearDatabaseProgress();
 	const queryClient = useQueryClient();
 
-	const requiredConfirmation = "CLEAR_ALL_DATA_PERMANENTLY_清空所有数据_永久删除";
+	const requiredConfirmation = "CLEAR_ALL_DATA_PERMANENTLY";
 
 	const handleConfirm = async () => {
 		if (confirmation !== requiredConfirmation) return;
@@ -145,7 +145,7 @@ export function ClearDatabaseDialog({ isOpen, onClose }: ClearDatabaseDialogProp
 										className="text-sm font-medium"
 									>
 										为了确认，请输入：
-										<code className="bg-muted px-2 py-1 rounded text-xs font-mono">
+										<code className="bg-muted px-2 py-1 rounded text-xs font-mono ml-2">
 											{requiredConfirmation}
 										</code>
 									</label>

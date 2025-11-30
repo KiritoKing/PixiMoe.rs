@@ -88,55 +88,28 @@ The system SHALL provide a sidebar component for filtering files by tags.
 ### Requirement: File Import Dialog Component
 The system SHALL provide a modal dialog for importing files with progress feedback and tagging options.
 
-#### Scenario: File picker dialog opens
-- **WHEN** user clicks "Import Files" button in toolbar
-- **THEN** shadcn/ui Dialog component opens
-- **AND** Tauri file picker API is invoked with filters: ["*.jpg", "*.png", "*.webp"]
-- **AND** multi-select is enabled (user can select multiple files)
-- **WHEN** user cancels file picker
-- **THEN** dialog closes without action
-
-#### Scenario: Tag input is available before import
-- **WHEN** files are selected for import
-- **THEN** tag input field is displayed in dialog
-- **AND** autocomplete suggests existing tags
-- **AND** user can add multiple tags as chips
-- **AND** tags will be applied to all imported files
-
 #### Scenario: Import progress is displayed
 - **WHEN** user selects files and confirms
 - **THEN** `useImportFiles()` mutation is called for each file sequentially
-- **AND** progress bar shows current stage (hashing → thumbnail → AI → saving)
-- **AND** current file number and total count are displayed (e.g., "2 / 5")
+- **AND** progress indicators show current stage (import → thumbnail → AI tagging)
+- **AND** current file number and total count are displayed accurately (e.g., "2 / 5")
 - **AND** percentage progress is calculated and displayed
 - **AND** UI remains responsive during import
+- **AND** AI tagging progress count uses backend-provided `current` and `total` values directly (not manually incremented)
+- **AND** AI tagging "processing" count is calculated as `total - current` for batch operations
+- **AND** thumbnail progress is tracked manually (since backend doesn't send `total`)
 
 #### Scenario: Import events update progress
 - **WHEN** backend emits `import_progress` event
 - **THEN** frontend event listener receives event with { file_hash, stage }
-- **AND** progress bar updates to show current stage name
+- **AND** progress indicator updates to show current stage name
 - **AND** stage indicator animates to next step
-- **AND** Zustand store tracks progress state
-
-#### Scenario: Import completion is shown via toast
-- **WHEN** all files finish importing
-- **THEN** success toast notification is displayed: "Imported X files"
-- **AND** if tags were specified: "Applied Y tags to X files"
-- **AND** `files` and `tags` queries are invalidated via TanStack Query
-- **AND** ImageGrid automatically refetches and shows new images
-- **AND** dialog closes automatically
-
-#### Scenario: Duplicate files are reported
-- **WHEN** imported file has `is_duplicate: true` in response
-- **THEN** info toast is shown: "Y duplicates skipped"
-- **AND** file counter does not increment for duplicates
-- **AND** import continues with next file
-
-#### Scenario: Import errors are handled
-- **WHEN** import command returns error (e.g., unsupported format)
-- **THEN** error toast notification is displayed with file name and reason
-- **AND** import continues with next file (no abort)
-- **AND** successfully imported files remain in database (no rollback)
+- **AND** progress state is tracked in component state
+- **WHEN** backend emits `ai_tagging_progress` events during batch operations
+- **THEN** frontend uses `current` and `total` values directly from backend events
+- **AND** progress count is set to `current` value (not manually incremented)
+- **AND** "processing" count is calculated as `total - current` for batch operations
+- **AND** processing Set is cleared when batch events are received (since they have no `file_hash`)
 
 ### Requirement: Image Lightbox Viewer
 The system SHALL provide a modal viewer for displaying full-resolution images with navigation.
@@ -269,34 +242,6 @@ The system SHALL provide a non-blocking toast notification system for immediate 
 ### Requirement: Persistent Notification Center
 The system SHALL provide a notification center to store and display all system notifications with full details.
 
-#### Scenario: Notification center is accessible
-- **WHEN** user clicks bell icon in top toolbar
-- **THEN** notification center panel opens as right sidebar or dropdown
-- **AND** panel displays all notifications in reverse chronological order (newest first)
-- **AND** panel shows unread count badge on bell icon
-- **AND** panel is scrollable to view history
-
-#### Scenario: Notifications are categorized by type
-- **WHEN** notification center is open
-- **THEN** notifications are grouped by type (Success, Error, Info, Warning)
-- **AND** each notification shows icon, timestamp, title, and full message
-- **AND** user can filter by type (All, Errors, Success, etc.)
-- **AND** each notification shows detailed information (file names, error stack traces, etc.)
-
-#### Scenario: Notifications persist across sessions
-- **WHEN** application closes and reopens
-- **THEN** notification history is preserved (last 100 notifications)
-- **AND** unread count is restored from Tauri Store
-- **AND** old notifications (>7 days) are automatically cleaned up
-
-#### Scenario: Notifications can be marked as read
-- **WHEN** user opens notification center
-- **THEN** all visible notifications are automatically marked as read
-- **AND** unread badge count decreases to 0
-- **WHEN** user clicks specific notification
-- **THEN** notification expands to show full details
-- **AND** notification is marked as read
-
 #### Scenario: Notifications can be cleared
 - **WHEN** user clicks "Clear All" button in notification center
 - **THEN** confirmation dialog asks: "Clear all notifications?"
@@ -304,25 +249,7 @@ The system SHALL provide a notification center to store and display all system n
 - **AND** notification center shows empty state: "No notifications"
 - **WHEN** user clicks individual notification's delete button
 - **THEN** specific notification is removed from list
-
-#### Scenario: Critical errors are persistent
-- **WHEN** import fails with critical error (e.g., database corruption)
-- **THEN** error notification is marked as "pinned"
-- **AND** pinned notifications remain at top of list
-- **AND** pinned notifications are not auto-cleared
-- **AND** user must manually dismiss pinned notifications
-
-#### Scenario: Notification details are comprehensive
-- **WHEN** batch import completes
-- **THEN** notification includes:
-  - Total files selected
-  - Successfully imported count
-  - Duplicate count
-  - Failed count (with list of failed file names)
-  - Tags applied (if any)
-- **WHEN** user clicks notification
-- **THEN** expandable section shows detailed breakdown
-- **AND** failed files show individual error messages
+- **NOTE**: Database clearing functionality has been moved to Settings Panel (see Database Management Settings requirement)
 
 ### Requirement: Component Migration to shadcn/ui
 The system SHALL replace all custom UI components with shadcn/ui equivalents for consistency and accessibility.
@@ -366,4 +293,46 @@ The system SHALL replace all custom UI components with shadcn/ui equivalents for
 - **AND** close button uses shadcn Button with ghost variant
 - **AND** dialog content follows shadcn DialogContent patterns
 - **AND** dialog respects theme without custom dark mode classes
+
+### Requirement: Database Management Settings
+The system SHALL provide a database management page in the Settings Panel for viewing database statistics and clearing database data.
+
+#### Scenario: Database settings page is accessible
+- **WHEN** user opens Settings Panel
+- **THEN** "Database" option is available in the settings navigation
+- **AND** clicking "Database" opens the database management page
+- **AND** page displays current database statistics (files, tags, folders, persons counts)
+
+#### Scenario: Database statistics are displayed
+- **WHEN** database settings page is open
+- **THEN** statistics card shows:
+  - Number of image files
+  - Number of tags
+  - Number of folders
+  - Number of persons
+  - Total record count
+- **AND** statistics are fetched from backend via `get_database_stats()` command
+- **AND** statistics update automatically when database changes
+
+#### Scenario: Clear database operation is available
+- **WHEN** database settings page is open
+- **AND** database contains data (total records > 0)
+- **THEN** "Clear Database" button is enabled in the "Dangerous Operations" section
+- **WHEN** database is empty (total records = 0)
+- **THEN** "Clear Database" button is disabled
+
+#### Scenario: Clear database confirmation requires English text
+- **WHEN** user clicks "Clear Database" button
+- **THEN** confirmation dialog opens
+- **AND** dialog displays warning about permanent data deletion
+- **AND** dialog shows database statistics summary
+- **AND** dialog requires user to input confirmation text: `CLEAR_ALL_DATA_PERMANENTLY`
+- **WHEN** user enters correct confirmation text
+- **THEN** "Confirm Clear Database" button becomes enabled
+- **WHEN** user enters incorrect text
+- **THEN** confirmation button remains disabled
+- **WHEN** user confirms with correct text
+- **THEN** database clearing operation starts
+- **AND** progress is displayed during clearing
+- **AND** completion message is shown when finished
 

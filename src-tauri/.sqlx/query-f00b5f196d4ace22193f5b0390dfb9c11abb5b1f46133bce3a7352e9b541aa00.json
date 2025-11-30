@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO Tags (name, category_id)\n        VALUES (?, ?)\n        RETURNING tag_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "tag_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "f00b5f196d4ace22193f5b0390dfb9c11abb5b1f46133bce3a7352e9b541aa00"
+}

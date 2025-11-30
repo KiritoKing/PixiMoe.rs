@@ -5,13 +5,11 @@ import {
 	CheckCircle2,
 	ChevronDown,
 	ChevronUp,
-	Database,
 	Info,
 	Trash2,
 	X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ClearDatabaseDialog } from "@/components/admin/ClearDatabaseDialog";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -26,7 +24,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { useDatabaseStats } from "@/lib/hooks/useAdmin";
 import { useNotifications } from "@/lib/stores/useNotifications";
 import { cn } from "@/lib/utils";
 import type { Notification, NotificationType } from "@/types";
@@ -157,8 +154,6 @@ export function NotificationCenter() {
 		useNotifications();
 
 	const [showClearDialog, setShowClearDialog] = useState(false);
-	const [isClearDbDialogOpen, setIsClearDbDialogOpen] = useState(false);
-	const { data: stats } = useDatabaseStats();
 
 	useEffect(() => {
 		loadFromStore();
@@ -203,20 +198,6 @@ export function NotificationCenter() {
 							<div className="flex items-center justify-between">
 								<SheetTitle>通知中心</SheetTitle>
 							</div>
-							{/* Clear Database Button - Most prominent position */}
-							{stats && Object.values(stats).some((count) => count > 0) && (
-								<div className="mt-4">
-									<Button
-										variant="destructive"
-										size="sm"
-										onClick={() => setIsClearDbDialogOpen(true)}
-										className="w-full flex items-center gap-2"
-									>
-										<Database className="w-4 h-4" />
-										清空数据库
-									</Button>
-								</div>
-							)}
 							{notifications.length > 0 && (
 								<div className="flex justify-end mt-2">
 									<Button
@@ -297,12 +278,6 @@ export function NotificationCenter() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-
-			{/* Clear Database Dialog */}
-			<ClearDatabaseDialog
-				isOpen={isClearDbDialogOpen}
-				onClose={() => setIsClearDbDialogOpen(false)}
-			/>
 		</>
 	);
 }

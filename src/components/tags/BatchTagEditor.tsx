@@ -66,9 +66,11 @@ export function BatchTagEditor({
 	const handleRunAI = async () => {
 		try {
 			await batchAIMutation.mutateAsync(selectedHashes);
-			toast.success(`AI tagging completed for ${selectedHashes.length} file(s)`);
+			// Don't show toast here - it will be shown by the event listener
+			// when batch_complete event is received (handled in ImportButton or App)
 			setShowAIConfirm(false);
 		} catch (error) {
+			// Only show error toast for immediate errors (not progress events)
 			toast.error(`AI tagging failed: ${error}`);
 		}
 	};

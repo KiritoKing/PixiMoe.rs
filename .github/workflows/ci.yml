@@ -93,27 +93,11 @@ jobs:
         working-directory: src-tauri
         run: cargo fmt --all -- --check
 
-      - name: Install sqlx-cli
-        run: cargo install sqlx-cli --features sqlite --no-default-features || true
-
-      - name: Prepare SQLX query cache
-        working-directory: src-tauri
-        env:
-          DATABASE_URL: sqlite:/tmp/test.db
-        run: |
-          # Create database
-          sqlx database create
-          # Run migrations (migrations are in ../migrations relative to src-tauri)
-          sqlx migrate run --source ../migrations
-          # Generate query cache for offline mode (build.rs sets SQLX_OFFLINE=true)
-          cargo sqlx prepare --database-url "sqlite:/tmp/test.db"
-        continue-on-error: false
-
       - name: Rust clippy
         working-directory: src-tauri
         env:
-          # build.rs sets SQLX_OFFLINE=true, so we need the prepared cache
-          DATABASE_URL: sqlite:/tmp/test.db
+          # Enable SQLx offline mode (build.rs also sets this)
+          SQLX_OFFLINE: true
         run: cargo clippy --all-targets --all-features -- -D warnings
         continue-on-error: false
 
@@ -223,15 +207,23 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.arch == 'aarch64'
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            libc6-dev-arm64-cross
 
       - name: Build Tauri application
         run: pnpm tauri build --target ${{ matrix.target }}
         env:
-          # Set environment variables for cross-compilation if needed
+          # Enable SQLx offline mode (build.rs also sets this)
+          SQLX_OFFLINE: true
+          # Set environment variables for cross-compilation if needed (Linux ARM64 only)
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
           CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
           AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
+          # Configure pkg-config for cross-compilation (Linux ARM64 only)
+          PKG_CONFIG_ALLOW_CROSS: 1
+          PKG_CONFIG_PATH: ""
+          PKG_CONFIG_LIBDIR: /usr/lib/aarch64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
 
       - name: Find and package artifacts (Windows)
         if: matrix.os == 'windows-latest'

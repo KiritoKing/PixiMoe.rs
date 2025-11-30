@@ -2,7 +2,6 @@
 
 ## Purpose
 提供SQLite数据库基础设施，包括连接池管理、迁移系统、schema定义、环境配置等核心数据库功能。这是所有数据库操作的基础层。
-
 ## Requirements
 ### Requirement: SQLite Database with sqlx
 The system SHALL use sqlx as the async SQLite driver with compile-time query validation and migration management.
@@ -170,4 +169,19 @@ The system SHALL use environment variables for database configuration with prope
 - **THEN** `dotenvy` or equivalent crate loads variables
 - **AND** variables are available to Rust code
 - **AND** `.env` is listed in `.gitignore`
+
+### Requirement: Database Clearing Command
+The system SHALL provide a Tauri command for clearing all database data with confirmation text validation.
+
+#### Scenario: Clear database command validates confirmation text
+- **WHEN** `clear_database(confirmation: String)` command is called
+- **THEN** confirmation text is validated against required value: `CLEAR_ALL_DATA_PERMANENTLY`
+- **WHEN** confirmation text does not match
+- **THEN** command returns error: "Invalid confirmation text"
+- **WHEN** confirmation text matches
+- **THEN** command proceeds with database clearing operation
+- **AND** all tables are cleared in order: FileTags, FileFolders, Faces, Files, Tags, Folders, Persons
+- **AND** auto-increment sequences are reset
+- **AND** progress events are emitted during operation
+- **AND** command returns summary of cleared tables and record counts
 

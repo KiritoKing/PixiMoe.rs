@@ -1,6 +1,6 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { Loader2, Upload } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -34,6 +34,8 @@ export function ImportButton() {
 	);
 	const [aiTaggingCompleteCount, setAiTaggingCompleteCount] = useState(0);
 	const [aiTaggingTotal, setAiTaggingTotal] = useState(0);
+	// Track processed batch_complete events to prevent duplicate notifications
+	const processedBatchCompleteRef = useRef<Set<string>>(new Set());
 
 	// Listen for import progress events
 	useTauriEvent<ProgressEvent>("import_progress", (payload) => {
@@ -53,6 +55,7 @@ export function ImportButton() {
 				} else if (payload.stage === "complete" || payload.stage === "error") {
 					next.delete(fileHash);
 					if (payload.stage === "complete") {
+						// Backend doesn't send total/current for thumbnails, so we manually count
 						setThumbnailCompleteCount((count) => count + 1);
 					}
 				}
@@ -60,7 +63,7 @@ export function ImportButton() {
 			});
 		}
 
-		// Update total if provided
+		// Update total if provided (backend doesn't send this, but keep for future compatibility)
 		if (payload.total !== undefined) {
 			setThumbnailTotal(payload.total);
 		}
@@ -70,6 +73,22 @@ export function ImportButton() {
 	useTauriEvent<ProgressEvent>("ai_tagging_progress", (payload) => {
 		setAiProgress(payload);
 
+		// For batch operations, use the current/total values from backend directly
+		// Backend sends current and total in each complete/error/skipped event during batch processing
+		if (payload.current !== undefined && payload.total !== undefined) {
+			setAiTaggingCompleteCount(payload.current);
+			setAiTaggingTotal(payload.total);
+			// For batch operations, clear processing hashes since we track by current/total
+			// The "processing" count will be calculated as total - current
+			setAiTaggingProcessingHashes(new Set());
+		} else if (payload.total !== undefined) {
+			// Update total if provided (fallback for non-batch events)
+			setAiTaggingTotal(payload.total);
+		}
+
+		// Track individual file processing (for non-batch operations or per-file status)
+		// Note: In batch operations, complete events have file_hash: None, so this only
+		// tracks classifying/saving_tags stages
 		if (payload.file_hash) {
 			const fileHash = payload.file_hash;
 			setAiTaggingProcessingHashes((prev) => {
@@ -81,46 +100,51 @@ export function ImportButton() {
 					payload.stage === "error" ||
 					payload.stage === "skipped"
 				) {
+					// Only remove if we're not in batch mode (batch mode uses current/total)
+					// In batch mode, file_hash is None for complete events, so this won't execute
 					next.delete(fileHash);
-					if (payload.stage === "complete") {
-						setAiTaggingCompleteCount((count) => count + 1);
-					}
 				}
 				return next;
 			});
 		}
 
-		// Update total if provided
-		if (payload.total !== undefined) {
-			setAiTaggingTotal(payload.total);
-		}
-
-		// Handle batch complete
+		// Handle batch complete - only show toast on batch completion, not per-file
 		if (payload.stage === "batch_complete") {
 			setAiTaggingProcessingHashes(new Set());
 			if (payload.current !== undefined && payload.total !== undefined) {
 				setAiTaggingCompleteCount(payload.current);
 				setAiTaggingTotal(payload.total);
 			}
+			// Show summary toast only when batch completes
+			// Use a unique key to prevent duplicate notifications
+			if (payload.current !== undefined && payload.total !== undefined) {
+				const batchKey = `${payload.current}-${payload.total}-${payload.message}`;
+				// Only process if we haven't seen this batch completion before
+				if (!processedBatchCompleteRef.current.has(batchKey)) {
+					processedBatchCompleteRef.current.add(batchKey);
+					const successCount = payload.current;
+					const totalCount = payload.total;
+					const message = `已完成 ${successCount}/${totalCount} 个文件的 AI 标签`;
+					createToastWithDetails(
+						toast,
+						"success",
+						"AI 标签批量完成",
+						message,
+						payload.message
+					);
+					// Clean up old keys after a delay to prevent memory leak
+					setTimeout(() => {
+						processedBatchCompleteRef.current.delete(batchKey);
+					}, 10000);
+				}
+			}
 		}
 
-		// Show toast for AI tagging completion with notification center integration
-		if (payload.stage === "complete") {
-			createToastWithDetails(
-				toast,
-				"success",
-				"AI 标签完成",
-				payload.message,
-				`文件哈希: ${payload.file_hash || "未知"}\n${payload.message}`
-			);
-		} else if (payload.stage === "error") {
-			createToastWithDetails(
-				toast,
-				"error",
-				"AI 标签失败",
-				payload.message,
-				`文件哈希: ${payload.file_hash || "未知"}\n错误: ${payload.message}`
-			);
+		// Only show toast for errors (not per-file completion)
+		// Per-file completions are tracked silently, only batch completion shows toast
+		if (payload.stage === "error" && !payload.file_hash) {
+			// Only show error toast if it's a batch-level error (no file_hash)
+			createToastWithDetails(toast, "error", "AI 标签失败", payload.message, payload.message);
 		}
 	});
 
@@ -308,8 +332,17 @@ export function ImportButton() {
 									</div>
 									<p className="text-xs text-muted-foreground">
 										{aiTaggingCompleteCount}/{aiTaggingTotal} 完成
-										{aiTaggingProcessingHashes.size > 0 &&
-											` (${aiTaggingProcessingHashes.size} 处理中)`}
+										{(() => {
+											// Calculate processing count: for batch operations use total - current,
+											// for individual operations use the Set size
+											const processingCount =
+												aiTaggingTotal > 0
+													? aiTaggingTotal - aiTaggingCompleteCount
+													: aiTaggingProcessingHashes.size;
+											return processingCount > 0
+												? ` (${processingCount} 处理中)`
+												: "";
+										})()}
 									</p>
 								</div>
 							)}
