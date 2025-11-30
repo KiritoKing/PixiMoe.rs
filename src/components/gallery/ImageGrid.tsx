@@ -2,17 +2,18 @@ import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
 import { listen } from "@tauri-apps/api/event";
 import { ImageIcon, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { BatchTagEditor } from "@/components/tags/BatchTagEditor";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAddFavorites, useRemoveFavorites } from "@/lib/hooks/useFavorites";
 import { useDeleteFile, useDeleteFilesBatch, useFiles } from "@/lib/hooks/useFiles";
 import type { FileRecord, ProgressEvent } from "@/types";
 import { BatchOperationsBar } from "./BatchOperationsBar";
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { ImageCard } from "./ImageCard";
-import { ImageViewer } from "./ImageViewer";
+import { ImageViewer } from "./ImageViewer"; // Extend Window interface to store resize observer
 
-// Extend Window interface to store resize observer
 declare global {
 	interface Window {
 		__imageGridResizeObserver?: ResizeObserver;
@@ -54,6 +55,8 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
 	const { data: fetchedFiles, isLoading: fetchLoading } = useFiles();
 	const deleteFileMutation = useDeleteFile();
 	const deleteFilesBatchMutation = useDeleteFilesBatch();
+	const addFavoritesMutation = useAddFavorites();
+	const removeFavoritesMutation = useRemoveFavorites();
 
 	const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
 	const [selectedHashes, setSelectedHashes] = useState<Set<string>>(new Set());
@@ -385,6 +388,32 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
 		// The BatchTagEditor is already shown when selectedHashes.size > 0
 	}, []);
 
+	const handleBatchAddFavorites = useCallback(async () => {
+		if (selectedHashes.size === 0) return;
+
+		const fileHashes = Array.from(selectedHashes);
+		try {
+			const count = await addFavoritesMutation.mutateAsync(fileHashes);
+			toast.success(`已添加 ${count} 个文件到收藏`);
+			clearSelection();
+		} catch (error) {
+			toast.error(`添加收藏失败: ${error}`);
+		}
+	}, [selectedHashes, addFavoritesMutation, clearSelection]);
+
+	const handleBatchRemoveFavorites = useCallback(async () => {
+		if (selectedHashes.size === 0) return;
+
+		const fileHashes = Array.from(selectedHashes);
+		try {
+			const count = await removeFavoritesMutation.mutateAsync(fileHashes);
+			toast.success(`已从收藏中移除 ${count} 个文件`);
+			clearSelection();
+		} catch (error) {
+			toast.error(`移除收藏失败: ${error}`);
+		}
+	}, [selectedHashes, removeFavoritesMutation, clearSelection]);
+
 	const handleSingleDelete = useCallback((fileHash: string) => {
 		// Store file hash for deletion after confirmation
 		setDeleteDialogIsBatch(false);
@@ -563,6 +592,8 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
 					onSelectAll={handleSelectAll}
 					onDelete={handleBatchDelete}
 					onEditTags={handleBatchEditTags}
+					onAddFavorites={handleBatchAddFavorites}
+					onRemoveFavorites={handleBatchRemoveFavorites}
 				/>
 			)}
 

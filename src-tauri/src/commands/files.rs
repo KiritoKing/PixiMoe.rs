@@ -272,15 +272,16 @@ async fn tag_file_automatically(
 	// Insert tags into database
 	let mut added_count = 0;
 	for prediction in predictions {
-		// Insert or get tag
+		// Insert or get tag with correct AI category
 		let tag = match sqlx::query!(
 			r#"
             INSERT INTO Tags (name, type)
-            VALUES (?, 'general')
+            VALUES (?, ?)
             ON CONFLICT(name) DO UPDATE SET name=name
             RETURNING tag_id
             "#,
-			prediction.name
+			prediction.name,
+			prediction.category
 		)
 		.fetch_one(pool)
 		.await
@@ -680,14 +681,55 @@ pub async fn get_file_by_hash(
 pub async fn search_files_by_tags(
 	pool: tauri::State<'_, SqlitePool>,
 	tag_ids: Vec<i32>,
+	favorites_only: Option<bool>,
 ) -> Result<Vec<FileRecord>, AppError> {
-	// If no tags specified, return all files
-	if tag_ids.is_empty() {
+	let favorites_only = favorites_only.unwrap_or(false);
+
+	// Handle different filter combinations
+	if tag_ids.is_empty() && !favorites_only {
+		// No filters, return all files
 		return get_all_files(pool, None, None).await;
 	}
 
-	// Build dynamic query for OR logic (files that have ANY of the specified tags)
+	if tag_ids.is_empty() && favorites_only {
+		// Only favorites filter
+		let rows = sqlx::query(
+			r#"
+            SELECT DISTINCT f.file_hash, f.original_path, f.file_size_bytes, f.file_last_modified,
+                   f.width, f.height, f.date_imported, f.is_missing
+            FROM Files f
+            INNER JOIN Favorites fav ON f.file_hash = fav.file_hash
+            WHERE f.is_missing = 0
+            ORDER BY f.date_imported DESC
+            "#,
+		)
+		.fetch_all(pool.inner())
+		.await?;
+
+		let files = rows
+			.into_iter()
+			.map(|row| FileRecord {
+				file_hash: row.get("file_hash"),
+				original_path: row.get("original_path"),
+				file_size_bytes: row.get("file_size_bytes"),
+				file_last_modified: row.get("file_last_modified"),
+				width: row.get("width"),
+				height: row.get("height"),
+				date_imported: row.get("date_imported"),
+				is_missing: row.get("is_missing"),
+			})
+			.collect();
+
+		return Ok(files);
+	}
+
+	// Build query with tags (and optionally favorites)
 	let placeholders = tag_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+	let favorites_join = if favorites_only {
+		"INNER JOIN Favorites fav ON f.file_hash = fav.file_hash"
+	} else {
+		""
+	};
 
 	let query = format!(
 		r#"
@@ -695,21 +737,19 @@ pub async fn search_files_by_tags(
                f.width, f.height, f.date_imported, f.is_missing
         FROM Files f
         INNER JOIN FileTags ft ON f.file_hash = ft.file_hash
+        {favorites_join}
         WHERE f.is_missing = 0 AND ft.tag_id IN ({placeholders})
         ORDER BY f.date_imported DESC
         "#
 	);
 
 	let mut query_builder = sqlx::query(&query);
-
-	// Bind tag IDs
 	for tag_id in &tag_ids {
 		query_builder = query_builder.bind(tag_id);
 	}
 
 	let rows = query_builder.fetch_all(pool.inner()).await?;
 
-	// Manually map rows to FileRecord
 	let files = rows
 		.into_iter()
 		.map(|row| FileRecord {
@@ -1098,6 +1138,7 @@ pub async fn test_ai_model(
 			.map(|p| TagPredictionResult {
 				name: p.name.clone(),
 				confidence: p.confidence,
+				category: p.category.clone(),
 			})
 			.collect(),
 		error: None,
@@ -1119,6 +1160,7 @@ pub struct TestModelResult {
 pub struct TagPredictionResult {
 	pub name: String,
 	pub confidence: f32,
+	pub category: String,
 }
 
 /// Delete a single file from the database and optionally the filesystem

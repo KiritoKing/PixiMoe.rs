@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT is_builtin FROM TagCategories WHERE category_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "is_builtin",
+        "ordinal": 0,
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "501746c3bbb27e92f4e4133b19c916461881784688c95881f6b8ea5fd8cccc0a"
+}

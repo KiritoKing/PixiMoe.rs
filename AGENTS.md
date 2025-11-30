@@ -38,6 +38,8 @@ Use the following commands to check code quality after each change submitted and
 | `cargo check` | `./src-tauri` | Check rust code |
 | `cargo fmt --all` | `./src-tauri` | Format rust code |
 | `cargo clippy --fix` | `./src-tauri` | Lint rust code |
+
+> !**IMPORTANT**: All Rust commands should be ran in `src-tuari` folder!
  
 
 ## shadcn/ui Usage Rules

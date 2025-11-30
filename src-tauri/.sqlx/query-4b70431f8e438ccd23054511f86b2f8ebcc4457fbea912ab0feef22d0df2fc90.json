@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT favorite_id FROM Favorites WHERE file_hash = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "favorite_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "4b70431f8e438ccd23054511f86b2f8ebcc4457fbea912ab0feef22d0df2fc90"
+}

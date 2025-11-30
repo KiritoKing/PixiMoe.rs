@@ -16,6 +16,7 @@ use std::sync::{Arc, Mutex};
 pub struct TagPrediction {
 	pub name: String,
 	pub confidence: f32,
+	pub category: String,
 }
 
 /// Enhanced prediction with category and index information for debugging
@@ -42,13 +43,10 @@ pub struct CategoryPredictions {
 // ============================================================================
 
 const MODEL_INPUT_SIZE: u32 = 448;
-const FALLBACK_MODEL_INPUT_SIZE: u32 = 448;
 
 /// Global variable to store detected model input size
 static DETECTED_MODEL_INPUT_SIZE: std::sync::atomic::AtomicU32 =
 	std::sync::atomic::AtomicU32::new(0);
-const CONFIDENCE_THRESHOLD: f32 = 0.50;
-const MAX_TAGS: usize = 50;
 
 // ============================================================================
 // Label Map and Model Loading
@@ -614,7 +612,7 @@ pub async fn classify_image_with_params(
 	let mut character_predictions = Vec::new();
 
 	for (idx, &confidence) in predictions.iter().enumerate() {
-		if let Some((name, category)) = label_map.get(&idx) {
+		if let Some((_name, category)) = label_map.get(&idx) {
 			let prediction = (idx, confidence);
 
 			match *category {
@@ -637,6 +635,7 @@ pub async fn classify_image_with_params(
 				results.push(TagPrediction {
 					name: name.clone(),
 					confidence: *confidence,
+					category: "rating".to_string(),
 				});
 			}
 		}
@@ -656,6 +655,7 @@ pub async fn classify_image_with_params(
 				results.push(TagPrediction {
 					name: name.clone(),
 					confidence: *confidence,
+					category: "general".to_string(),
 				});
 			}
 		}
@@ -675,6 +675,7 @@ pub async fn classify_image_with_params(
 				results.push(TagPrediction {
 					name: name.clone(),
 					confidence: *confidence,
+					category: "character".to_string(),
 				});
 			}
 		}
@@ -697,7 +698,7 @@ pub async fn classify_image_debug(image_path: &Path) -> Result<CategoryPredictio
 /// Classify an image with custom inference parameters and return detailed category-aware predictions
 pub async fn classify_image_debug_with_params(
 	image_path: &Path,
-	params: &InferenceParams,
+	_params: &InferenceParams,
 ) -> Result<CategoryPredictions, AppError> {
 	ai_debug!(
 		"[AI Debug] Starting detailed classification for: {}",

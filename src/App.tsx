@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Toaster } from "react-hot-toast";
+import { FavoriteCheckbox } from "./components/favorites/FavoriteCheckbox";
 import { ImageGrid } from "./components/gallery/ImageGrid";
 import { ImportButton } from "./components/import/ImportButton";
 import { NotificationCenter } from "./components/notifications/NotificationCenter";
@@ -14,6 +15,7 @@ import "./App.css";
 
 function App() {
 	const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+	const [favoritesOnly, setFavoritesOnly] = useState(false);
 	const queryClient = useQueryClient();
 
 	// Listen for thumbnail regeneration events
@@ -40,12 +42,21 @@ function App() {
 		[queryClient]
 	);
 
-	// Use search if tags are selected, otherwise get all files
+	// Use search if tags are selected or favorites filter is active, otherwise get all files
 	const { data: allFiles, isLoading: allLoading } = useFiles();
-	const { data: filteredFiles, isLoading: searchLoading } = useSearchFiles(selectedTagIds);
+	const { data: filteredFiles, isLoading: searchLoading } = useSearchFiles(
+		selectedTagIds,
+		favoritesOnly
+	);
 
-	const files = selectedTagIds.length > 0 ? filteredFiles : allFiles;
-	const isLoading = selectedTagIds.length > 0 ? searchLoading : allLoading;
+	// If we have filters (tags or favorites), use filtered results
+	// Otherwise use all files
+	const hasFilters = selectedTagIds.length > 0 || favoritesOnly;
+	const files = hasFilters ? filteredFiles : allFiles;
+	const isLoading = hasFilters ? searchLoading : allLoading;
+
+	// Get file hashes for FavoriteCheckbox
+	const fileHashes = files?.map((f) => f.file_hash) ?? [];
 
 	return (
 		<>
@@ -89,10 +100,23 @@ function App() {
 				{/* Main content area */}
 				<div className="flex flex-1 overflow-hidden">
 					{/* Tag filter sidebar */}
-					<TagFilterPanel
-						selectedTagIds={selectedTagIds}
-						onTagsChange={setSelectedTagIds}
-					/>
+					<div
+						className="w-80 border-r flex flex-col h-full shrink-0"
+						style={{ width: "320px", maxWidth: "320px", minWidth: "320px" }}
+					>
+						<TagFilterPanel
+							selectedTagIds={selectedTagIds}
+							onTagsChange={setSelectedTagIds}
+						/>
+						{/* Favorites filter */}
+						<div className="p-4 border-t shrink-0">
+							<FavoriteCheckbox
+								fileHashes={fileHashes}
+								onChange={setFavoritesOnly}
+								checked={favoritesOnly}
+							/>
+						</div>
+					</div>
 
 					{/* Image grid */}
 					<div className="flex-1 overflow-hidden">

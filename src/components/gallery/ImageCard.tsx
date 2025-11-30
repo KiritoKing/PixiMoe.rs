@@ -1,5 +1,6 @@
 import { AlertTriangle, Check } from "lucide-react";
 import { useEffect, useState } from "react";
+import { FavoriteButton } from "@/components/favorites/FavoriteButton";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { FileRecord } from "@/types";
@@ -170,8 +171,18 @@ export function ImageCard({
 				/>
 
 				{/* Hover overlay with gradient */}
-				<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-linear-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3 pointer-events-none">
-					<div className="text-white">
+				<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-linear-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-between p-2 pointer-events-none">
+					{/* Top right: Favorite button */}
+					<div className="flex justify-end pointer-events-auto">
+						<FavoriteButton
+							fileHash={file.file_hash}
+							variant="ghost"
+							size="icon"
+							className="scale-75 hover:scale-90 transition-transform"
+						/>
+					</div>
+					{/* Bottom: File info */}
+					<div className="text-white pointer-events-none">
 						<p className="text-sm font-medium truncate mb-1">{fileName}</p>
 						<div className="flex items-center gap-2 text-xs text-gray-200">
 							<span>

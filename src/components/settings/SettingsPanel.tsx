@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-
+import { CategoryManager } from "../categories/CategoryManager";
 // Import settings pages
 import { AISettingsPage } from "./AISettingsPage";
 
@@ -20,6 +20,12 @@ const SETTINGS_PAGES = [
 		name: "AI Settings",
 		icon: Settings,
 		component: AISettingsPage,
+	},
+	{
+		id: "categories",
+		name: "Categories",
+		icon: Settings,
+		component: CategoryManager,
 	},
 	{
 		id: "notifications",

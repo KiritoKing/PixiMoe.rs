@@ -1,13 +1,16 @@
-import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useCallback, useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCategories } from "@/lib/hooks/useCategories";
 import { useTags } from "@/lib/hooks/useTags";
 import type { Tag } from "@/types";
+import { CollapsibleCategorySection } from "./CollapsibleCategorySection";
+import { EmptyTagsSection } from "./EmptyTagsSection";
+import { SelectedTagsArea } from "./SelectedTagsArea";
+import { SortControl, type SortMode } from "./SortControl";
 
 interface TagFilterPanelProps {
 	selectedTagIds: number[];
@@ -15,9 +18,13 @@ interface TagFilterPanelProps {
 }
 
 export function TagFilterPanel({ selectedTagIds, onTagsChange }: TagFilterPanelProps) {
-	const { data: tags, isLoading } = useTags();
+	const { data: tags, isLoading: tagsLoading } = useTags();
+	const { data: categories, isLoading: categoriesLoading } = useCategories();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [showEmptyTags, setShowEmptyTags] = useState(false);
+	const [sortMode, setSortMode] = useState<SortMode>("alphabetical");
+
+	const isLoading = tagsLoading || categoriesLoading;
 
 	const toggleTag = (tagId: number) => {
 		if (selectedTagIds.includes(tagId)) {
@@ -31,85 +38,128 @@ export function TagFilterPanel({ selectedTagIds, onTagsChange }: TagFilterPanelP
 		onTagsChange([]);
 	};
 
-	const filteredTags = tags?.filter((tag) =>
-		tag.name.toLowerCase().includes(searchQuery.toLowerCase())
-	);
+	// Filter tags by search query
+	const filteredTags = useMemo(() => {
+		if (!tags) return [];
+		if (!searchQuery.trim()) return tags;
+		const query = searchQuery.toLowerCase();
+		return tags.filter((tag) => tag.name.toLowerCase().includes(query));
+	}, [tags, searchQuery]);
 
 	// Separate tags into those with files and those without
-	const tagsWithFiles = filteredTags?.filter(
-		(tag) => tag.file_count !== undefined && tag.file_count > 0
+	const tagsWithFiles = useMemo(
+		() => filteredTags.filter((tag) => tag.file_count !== undefined && tag.file_count > 0),
+		[filteredTags]
 	);
-	const tagsWithoutFiles = filteredTags?.filter((tag) => !tag.file_count || tag.file_count === 0);
 
-	// Group tags by type (for tags with files)
-	const tagsByType = tagsWithFiles?.reduce(
-		(acc, tag) => {
-			if (!acc[tag.type]) {
-				acc[tag.type] = [];
+	const tagsWithoutFiles = useMemo(
+		() => filteredTags.filter((tag) => !tag.file_count || tag.file_count === 0),
+		[filteredTags]
+	);
+
+	// Sort tags based on sort mode
+	const sortTags = useCallback(
+		(tagsToSort: Tag[]): Tag[] => {
+			const sorted = [...tagsToSort];
+			switch (sortMode) {
+				case "alphabetical":
+					return sorted.sort((a, b) => a.name.localeCompare(b.name));
+				case "count-asc":
+					return sorted.sort(
+						(a, b) =>
+							(a.file_count ?? 0) - (b.file_count ?? 0) ||
+							a.name.localeCompare(b.name)
+					);
+				case "count-desc":
+					return sorted.sort(
+						(a, b) =>
+							(b.file_count ?? 0) - (a.file_count ?? 0) ||
+							a.name.localeCompare(b.name)
+					);
+				default:
+					return sorted;
 			}
-			acc[tag.type].push(tag);
-			return acc;
 		},
-		{} as Record<string, Tag[]>
+		[sortMode]
 	);
 
-	// Group empty tags by type (for tags without files)
-	const emptyTagsByType = showEmptyTags
-		? tagsWithoutFiles?.reduce(
-				(acc, tag) => {
-					if (!acc[tag.type]) {
-						acc[tag.type] = [];
-					}
-					acc[tag.type].push(tag);
-					return acc;
-				},
-				{} as Record<string, Tag[]>
-			)
-		: {};
+	// Group tags by category
+	const tagsByCategory = useMemo(() => {
+		if (!categories || !tagsWithFiles.length) return new Map<number, Tag[]>();
 
-	const tagTypeLabels: Record<string, string> = {
-		general: "General",
-		character: "Characters",
-		artist: "Artists",
-		series: "Series",
-	};
+		const grouped = new Map<number, Tag[]>();
+		const sortedTags = sortTags(tagsWithFiles);
+
+		for (const tag of sortedTags) {
+			const categoryId = tag.category_id;
+			if (!grouped.has(categoryId)) {
+				grouped.set(categoryId, []);
+			}
+			const categoryTags = grouped.get(categoryId);
+			if (categoryTags) {
+				categoryTags.push(tag);
+			}
+		}
+
+		return grouped;
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [categories, tagsWithFiles, sortTags]);
+
+	// Get selected tags for display
+	const selectedTags = useMemo(() => {
+		if (!tags) return [];
+		return tags.filter((tag) => selectedTagIds.includes(tag.tag_id));
+	}, [tags, selectedTagIds]);
+
+	// Sort categories by sort_order
+	const sortedCategories = useMemo(() => {
+		if (!categories) return [];
+		return [...categories].sort((a, b) => a.sort_order - b.sort_order);
+	}, [categories]);
 
 	if (isLoading) {
 		return (
-			<div className="w-64 border-r p-4">
-				<div className="space-y-4">
-					<Skeleton className="h-10 w-full" />
-					<div className="space-y-2">
-						{Array.from({ length: 8 }).map((_, i) => (
-							<Skeleton key={`skeleton-tag-${i}`} className="h-6 w-full" />
-						))}
-					</div>
+			<div className="w-80 border-r flex flex-col h-full">
+				<div className="p-4 border-b">
+					<Skeleton className="h-10 w-full mb-3" />
+					<Skeleton className="h-8 w-full" />
+				</div>
+				<div className="p-4 space-y-2">
+					{Array.from({ length: 8 }).map((_, i) => (
+						<Skeleton key={`skeleton-tag-${i}`} className="h-6 w-full" />
+					))}
 				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="w-64 border-r flex flex-col h-full">
+		<div
+			className="w-80 border-r flex flex-col h-full shrink-0"
+			style={{ width: "320px", maxWidth: "320px", minWidth: "320px" }}
+		>
+			{/* Selected Tags Area */}
+			<SelectedTagsArea
+				selectedTags={selectedTags}
+				onRemoveTag={toggleTag}
+				onClearAll={clearFilters}
+			/>
+
 			{/* Header */}
-			<div className="p-4 border-b">
-				<h2 className="text-lg font-semibold mb-3">Filter by Tags</h2>
+			<div className="p-4 border-b shrink-0 overflow-hidden">
+				<div className="flex items-center justify-between mb-3 gap-2 min-w-0">
+					<h2 className="text-lg font-semibold truncate min-w-0">Filter by Tags</h2>
+					<SortControl sortMode={sortMode} onSortChange={setSortMode} />
+				</div>
 
 				{/* Search */}
 				<Input
 					type="text"
-					placeholder="Search tags..."
+					placeholder="搜索标签..."
 					value={searchQuery}
 					onChange={(e) => setSearchQuery(e.target.value)}
 					className="w-full"
 				/>
-
-				{/* Clear button */}
-				{selectedTagIds.length > 0 && (
-					<Button variant="link" size="sm" onClick={clearFilters} className="mt-2 w-full">
-						Clear filters ({selectedTagIds.length})
-					</Button>
-				)}
 
 				{/* Show empty tags toggle */}
 				<div className="mt-3 flex items-center gap-2">
@@ -119,7 +169,7 @@ export function TagFilterPanel({ selectedTagIds, onTagsChange }: TagFilterPanelP
 						onCheckedChange={(checked) => setShowEmptyTags(checked === true)}
 					/>
 					<Label htmlFor="show-empty-tags" className="text-sm cursor-pointer">
-						Show empty tags
+						显示空标签
 					</Label>
 				</div>
 			</div>
@@ -129,75 +179,30 @@ export function TagFilterPanel({ selectedTagIds, onTagsChange }: TagFilterPanelP
 				<div className="p-4">
 					{!filteredTags || filteredTags.length === 0 ? (
 						<p className="text-sm text-muted-foreground text-center py-4">
-							{searchQuery ? "No tags found" : "No tags available"}
+							{searchQuery ? "未找到标签" : "暂无标签"}
 						</p>
 					) : (
-						<div className="space-y-6">
-							{/* Tags with files */}
-							{Object.entries(tagsByType || {}).map(([type, typeTags]) => (
-								<div key={type}>
-									<h3 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
-										{tagTypeLabels[type] || type}
-									</h3>
-									<div className="space-y-1">
-										{typeTags.map((tag) => (
-											<label
-												key={tag.tag_id}
-												className="flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer transition-colors"
-											>
-												<input
-													type="checkbox"
-													checked={selectedTagIds.includes(tag.tag_id)}
-													onChange={() => toggleTag(tag.tag_id)}
-													className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-												/>
-												<span className="flex-1 text-sm truncate">
-													{tag.name}
-												</span>
-												{tag.file_count !== undefined &&
-													tag.file_count > 0 && (
-														<Badge
-															variant="outline"
-															className="text-xs"
-														>
-															{tag.file_count}
-														</Badge>
-													)}
-											</label>
-										))}
-									</div>
-								</div>
-							))}
+						<div>
+							{/* Category sections */}
+							{sortedCategories.map((category) => {
+								const categoryTags = tagsByCategory.get(category.category_id) ?? [];
+								if (categoryTags.length === 0) return null;
 
-							{/* Empty tags (shown below tags with files) */}
-							{showEmptyTags &&
-								Object.entries(emptyTagsByType || {}).map(([type, typeTags]) => (
-									<div key={`empty-${type}`}>
-										<h3 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
-											{tagTypeLabels[type] || type}
-										</h3>
-										<div className="space-y-1">
-											{typeTags.map((tag) => (
-												<label
-													key={tag.tag_id}
-													className="flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer transition-colors text-muted-foreground"
-												>
-													<input
-														type="checkbox"
-														checked={selectedTagIds.includes(
-															tag.tag_id
-														)}
-														onChange={() => toggleTag(tag.tag_id)}
-														className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-													/>
-													<span className="flex-1 text-sm truncate">
-														{tag.name}
-													</span>
-												</label>
-											))}
-										</div>
-									</div>
-								))}
+								return (
+									<CollapsibleCategorySection
+										key={category.category_id}
+										category={category}
+										tags={categoryTags}
+										selectedTagIds={selectedTagIds}
+										onToggleTag={toggleTag}
+									/>
+								);
+							})}
+
+							{/* Empty tags section */}
+							{showEmptyTags && tagsWithoutFiles.length > 0 && (
+								<EmptyTagsSection tags={sortTags(tagsWithoutFiles)} />
+							)}
 						</div>
 					)}
 				</div>

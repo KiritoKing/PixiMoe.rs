@@ -4,59 +4,59 @@
 **Priority: CRITICAL - Must be completed before any other work**
 
 ### 0.1 AI Classification Restoration
-- [ ] Fix TagPrediction structure to include category field from AI model
-- [ ] Update AI inference processing to preserve category information (9→rating, 4→character, 0→general)
-- [ ] Fix database insertion to use actual AI category instead of hardcoded 'general'
-- [ ] Update all AI tag creation points to pass category parameter
-- [ ] Test that AI-generated rating tags store as 'rating' type
-- [ ] Test that AI-generated character tags store as 'character' type
-- [ ] Create validation script to verify AI classification restoration
+- [x] Fix TagPrediction structure to include category field from AI model
+- [x] Update AI inference processing to preserve category information (9→rating, 4→character, 0→general)
+- [x] Fix database insertion to use actual AI category instead of hardcoded 'general'
+- [x] Update all AI tag creation points to pass category parameter
+- [x] Test that AI-generated rating tags store as 'rating' type
+- [x] Test that AI-generated character tags store as 'character' type
+- [x] Create validation script to verify AI classification restoration
 
 ### 0.2 Existing Data Assessment
-- [ ] Analyze existing misclassified AI-generated tags in database
-- [ ] Identify tags that should be reclassified (obvious rating patterns, character patterns)
-- [ ] Create dry-run migration script for data reclassification
-- [ ] Validate migration results and rollback capabilities
+- [x] Analyze existing misclassified AI-generated tags in database
+- [x] Identify tags that should be reclassified (obvious rating patterns, character patterns)
+- [x] Create dry-run migration script for data reclassification
+- [x] Validate migration results and rollback capabilities
 
 ## Phase 1: Database Foundation (2-3 days)
 
 ### 1.1 Schema Implementation
-- [ ] Create TagCategories table with built-in category seeds (GENERAL, CHARACTER, RATING, ARTIST)
-- [ ] Add category_id foreign key to Tags table
-- [ ] Create Favorites table for file favoriting
-- [ ] Add necessary indexes for performance optimization
-- [ ] Fix database type constraints to match AI model output
+- [x] Create TagCategories table with built-in category seeds (GENERAL, CHARACTER, RATING, ARTIST)
+- [x] Add category_id foreign key to Tags table
+- [x] Create Favorites table for file favoriting
+- [x] Add necessary indexes for performance optimization
+- [x] Fix database type constraints to match AI model output
 
 ### 1.2 Data Migration
-- [ ] Write comprehensive migration script for existing tag types → categories
-- [ ] Map existing 'general', 'character', 'rating', 'artist' types to built-in categories
-- [ ] Migrate potentially misclassified AI-generated tags
-- [ ] Validate data integrity after migration
-- [ ] Implement rollback procedures for failed migrations
+- [x] Write comprehensive migration script for existing tag types → categories
+- [x] Map existing 'general', 'character', 'rating', 'artist' types to built-in categories
+- [x] Migrate potentially misclassified AI-generated tags
+- [x] Validate data integrity after migration
+- [x] Implement rollback procedures for failed migrations
 
 ## Phase 2: Backend API Development (2-3 days)
 
 ### 2.1 Category Management APIs
-- [ ] Implement TagCategory CRUD Tauri commands
-- [ ] Add category reordering operations with drag-and-drop support
-- [ ] Create bulk category assignment operations
-- [ ] Add category validation and error handling
-- [ ] Implement backward compatibility layer for legacy type parameters
+- [x] Implement TagCategory CRUD Tauri commands
+- [x] Add category reordering operations with drag-and-drop support
+- [x] Create bulk category assignment operations
+- [x] Add category validation and error handling
+- [x] Implement backward compatibility layer for legacy type parameters
 
 ### 2.2 Favorites System APIs
-- [ ] Implement toggle_favorite() command returning new status
-- [ ] Add get_favorite_status() command for single file
-- [ ] Create batch favorite operations commands
-- [ ] Implement get_all_favorites() for management
-- [ ] Add comprehensive error handling and validation
-- [ ] Create Favorites table with proper constraints and indexes
-- [ ] Implement favorite status caching for performance
+- [x] Implement toggle_favorite() command returning new status
+- [x] Add get_favorite_status() command for single file
+- [x] Create batch favorite operations commands
+- [x] Implement get_all_favorites() for management
+- [x] Add comprehensive error handling and validation
+- [x] Create Favorites table with proper constraints and indexes
+- [x] Implement favorite status caching for performance
 
 ### 2.3 Enhanced Query Systems
-- [ ] Update tag queries to support category filtering
-- [ ] Implement combined favorites + tag filtering with AND logic
-- [ ] Optimize database queries for performance with new joins
-- [ ] Add pagination and performance optimizations for large datasets
+- [x] Update tag queries to support category filtering
+- [x] Implement combined favorites + tag filtering with AND logic
+- [x] Optimize database queries for performance with new joins
+- [x] Add pagination and performance optimizations for large datasets
 
 ## Phase 3: Core UI Components (3-4 days)
 

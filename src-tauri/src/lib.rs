@@ -23,8 +23,6 @@ macro_rules! ai_error {
 }
 
 // Make macros available to all modules
-pub(crate) use ai_debug;
-pub(crate) use ai_error;
 
 // Module declarations
 pub mod ai;
@@ -119,7 +117,7 @@ pub fn run() {
 			Ok(())
 		})
 		.invoke_handler(tauri::generate_handler![
-			// File commands
+			// File operations
 			commands::files::import_file,
 			commands::files::get_all_files,
 			commands::files::get_file_by_hash,
@@ -130,7 +128,7 @@ pub fn run() {
 			commands::files::test_ai_model,
 			commands::files::delete_file,
 			commands::files::delete_files_batch,
-			// Tag commands
+			// Tag operations
 			commands::tags::get_all_tags,
 			commands::tags::get_file_tags,
 			commands::tags::add_tag_to_file,
@@ -139,6 +137,25 @@ pub fn run() {
 			commands::tags::remove_tag_from_files,
 			commands::tags::create_tag,
 			commands::tags::search_tags,
+			commands::tags::update_tag,
+			commands::tags::delete_tag,
+			// Category commands
+			commands::categories::get_all_categories,
+			commands::categories::get_category,
+			commands::categories::create_category,
+			commands::categories::update_category,
+			commands::categories::delete_category,
+			commands::categories::reorder_categories,
+			commands::categories::assign_tag_to_category,
+			commands::categories::bulk_assign_tags_to_category,
+			// Favorites commands
+			commands::favorites::toggle_favorite,
+			commands::favorites::get_favorite_status,
+			commands::favorites::get_favorite_statuses,
+			commands::favorites::get_all_favorites,
+			commands::favorites::add_favorites,
+			commands::favorites::remove_favorites,
+			commands::favorites::get_favorite_count,
 			// Settings commands
 			commands::settings::upload_tag_model_file,
 			commands::settings::upload_label_map_file,

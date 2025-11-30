@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO Favorites (file_hash) VALUES (?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "0f1986d5da49c674386cc9702a82fd0e1eabb66578f38d4259d7f16cea549435"
+}

@@ -12,6 +12,7 @@ pub struct Tag {
 	pub name: String,
 	#[serde(rename = "type")]
 	pub tag_type: String,
+	pub category_id: i64,
 	pub file_count: Option<i64>,
 }
 
@@ -23,7 +24,7 @@ pub struct Tag {
 pub async fn get_all_tags(pool: tauri::State<'_, SqlitePool>) -> Result<Vec<Tag>, AppError> {
 	let tags = sqlx::query!(
 		r#"
-        SELECT t.tag_id, t.name, t.type,
+        SELECT t.tag_id, t.name, t.type, t.category_id,
                COUNT(ft.file_hash) as "file_count: i64"
         FROM Tags t
         LEFT JOIN FileTags ft ON t.tag_id = ft.tag_id
@@ -38,6 +39,7 @@ pub async fn get_all_tags(pool: tauri::State<'_, SqlitePool>) -> Result<Vec<Tag>
 		tag_id: row.tag_id,
 		name: row.name,
 		tag_type: row.r#type,
+		category_id: row.category_id,
 		file_count: Some(row.file_count),
 	})
 	.collect();
@@ -52,7 +54,7 @@ pub async fn get_file_tags(
 ) -> Result<Vec<Tag>, AppError> {
 	let tags = sqlx::query!(
 		r#"
-        SELECT t.tag_id, t.name, t.type
+        SELECT t.tag_id, t.name, t.type, t.category_id
         FROM Tags t
         INNER JOIN FileTags ft ON t.tag_id = ft.tag_id
         WHERE ft.file_hash = ?
@@ -67,6 +69,7 @@ pub async fn get_file_tags(
 		tag_id: row.tag_id.unwrap_or(0),
 		name: row.name,
 		tag_type: row.r#type,
+		category_id: row.category_id,
 		file_count: None,
 	})
 	.collect();
@@ -84,18 +87,21 @@ pub async fn add_tag_to_file(
 	let tag_type = tag_type.unwrap_or_else(|| "general".to_string());
 
 	// Get or create tag
-	let tag = sqlx::query!(
+	let _tag = sqlx::query!(
 		r#"
-        INSERT INTO Tags (name, type)
+        INSERT OR IGNORE INTO Tags (name, type)
         VALUES (?, ?)
-        ON CONFLICT(name) DO UPDATE SET type=type
-        RETURNING tag_id
         "#,
 		tag_name,
 		tag_type
 	)
-	.fetch_one(pool.inner())
+	.execute(pool.inner())
 	.await?;
+
+	// Get the tag (either existing or newly inserted)
+	let tag = sqlx::query!("SELECT tag_id FROM Tags WHERE name = ?", tag_name)
+		.fetch_one(pool.inner())
+		.await?;
 
 	// Add file-tag association (ignore if already exists)
 	sqlx::query!(
@@ -109,7 +115,8 @@ pub async fn add_tag_to_file(
 	.execute(pool.inner())
 	.await?;
 
-	Ok(tag.tag_id)
+	tag.tag_id
+		.ok_or_else(|| AppError::Custom("Failed to get tag_id".to_string()))
 }
 
 #[tauri::command]
@@ -203,34 +210,74 @@ pub async fn remove_tag_from_files(
 pub async fn create_tag(
 	pool: tauri::State<'_, SqlitePool>,
 	name: String,
-	tag_type: String,
+	category_id: i64,
 ) -> Result<i64, AppError> {
-	// Validate tag type
-	let valid_types = ["general", "character", "artist", "meta", "copyright"];
-	if !valid_types.contains(&tag_type.as_str()) {
-		return Err(AppError::Custom(format!(
-			"Invalid tag type '{}'. Must be one of: {}",
-			tag_type,
-			valid_types.join(", ")
-		)));
+	// Validate name is not empty
+	if name.trim().is_empty() {
+		return Err(AppError::Custom("Tag name cannot be empty".to_string()));
 	}
 
-	// Insert or return existing tag
+	// Insert new tag
 	let tag = sqlx::query!(
 		r#"
-        INSERT INTO Tags (name, type)
+        INSERT INTO Tags (name, category_id)
         VALUES (?, ?)
-        ON CONFLICT(name) DO UPDATE SET type=?
         RETURNING tag_id
         "#,
 		name,
-		tag_type,
-		tag_type
+		category_id
 	)
 	.fetch_one(pool.inner())
 	.await?;
 
-	Ok(tag.tag_id)
+	tag.tag_id
+		.ok_or_else(|| AppError::Custom("Failed to get tag_id".to_string()))
+}
+
+#[tauri::command]
+pub async fn update_tag(
+	pool: tauri::State<'_, SqlitePool>,
+	tag_id: i64,
+	name: String,
+	category_id: i64,
+) -> Result<(), AppError> {
+	// Validate name is not empty
+	if name.trim().is_empty() {
+		return Err(AppError::Custom("Tag name cannot be empty".to_string()));
+	}
+
+	// Update tag
+	sqlx::query!(
+		r#"
+        UPDATE Tags 
+        SET name = ?, category_id = ?
+        WHERE tag_id = ?
+        "#,
+		name,
+		category_id,
+		tag_id
+	)
+	.execute(pool.inner())
+	.await?;
+
+	Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_tag(pool: tauri::State<'_, SqlitePool>, tag_id: i64) -> Result<(), AppError> {
+	// Check if tag exists
+	let tag = sqlx::query!("SELECT name FROM Tags WHERE tag_id = ?", tag_id)
+		.fetch_optional(pool.inner())
+		.await?;
+
+	let _tag = tag.ok_or_else(|| AppError::Custom(format!("Tag with id {tag_id} not found")))?;
+
+	// Delete tag (file associations will be deleted by foreign key constraint)
+	sqlx::query!("DELETE FROM Tags WHERE tag_id = ?", tag_id)
+		.execute(pool.inner())
+		.await?;
+
+	Ok(())
 }
 
 #[tauri::command]
@@ -244,7 +291,7 @@ pub async fn search_tags(
 
 	let tags = sqlx::query!(
 		r#"
-        SELECT t.tag_id, t.name, t.type,
+        SELECT t.tag_id, t.name, t.type, t.category_id,
                COUNT(ft.file_hash) as file_count
         FROM Tags t
         LEFT JOIN FileTags ft ON t.tag_id = ft.tag_id
@@ -263,6 +310,7 @@ pub async fn search_tags(
 		tag_id: row.tag_id,
 		name: row.name,
 		tag_type: row.r#type,
+		category_id: row.category_id,
 		file_count: Some(row.file_count),
 	})
 	.collect();

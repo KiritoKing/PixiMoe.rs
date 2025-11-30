@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO TagCategories (name, color_code, is_builtin, sort_order)\n        VALUES (?, ?, FALSE, ?)\n        RETURNING category_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "category_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ebe8d3e0f8965023ee9f66602a9f36c485bba47a9acd663469dc7a20ec3d9951"
+}

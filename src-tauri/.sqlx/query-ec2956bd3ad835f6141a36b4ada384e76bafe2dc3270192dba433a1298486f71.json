@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT MAX(sort_order) FROM TagCategories",
+  "describe": {
+    "columns": [
+      {
+        "name": "MAX(sort_order)",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "ec2956bd3ad835f6141a36b4ada384e76bafe2dc3270192dba433a1298486f71"
+}

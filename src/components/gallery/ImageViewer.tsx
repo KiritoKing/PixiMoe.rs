@@ -6,6 +6,7 @@ import {
 	TransformComponent,
 	TransformWrapper,
 } from "react-zoom-pan-pinch";
+import { FavoriteButton } from "@/components/favorites/FavoriteButton";
 import { TagInput } from "@/components/tags/TagInput";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -183,12 +184,25 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
 
 	return (
 		<Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-			<DialogContent className="max-w-7xl w-[90vw] h-[90vh] p-0 gap-0 flex flex-col">
+			<DialogContent
+				className="max-w-7xl w-[90vw] h-[90vh] p-0 gap-0 flex flex-col"
+				showCloseButton={false}
+			>
 				<DialogHeader className="sr-only">
 					<DialogTitle>Image Viewer</DialogTitle>
 				</DialogHeader>
 
 				<div className="relative flex w-full h-full min-h-0">
+					{/* Favorite button in main area */}
+					<div className="absolute top-4 left-4 z-10">
+						<FavoriteButton
+							fileHash={file.file_hash}
+							variant="ghost"
+							size="icon"
+							className="bg-background/80 backdrop-blur-sm"
+						/>
+					</div>
+
 					{/* Close button */}
 					<Button
 						variant="ghost"

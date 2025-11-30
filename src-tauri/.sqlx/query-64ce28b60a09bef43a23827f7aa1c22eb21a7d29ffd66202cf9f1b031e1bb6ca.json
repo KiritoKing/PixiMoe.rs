@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM Favorites WHERE file_hash = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "64ce28b60a09bef43a23827f7aa1c22eb21a7d29ffd66202cf9f1b031e1bb6ca"
+}

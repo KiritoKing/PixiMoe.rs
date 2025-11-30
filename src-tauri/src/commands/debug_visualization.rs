@@ -81,7 +81,7 @@ fn image_to_base64(
 
 	// 转换为base64字符串，并添加data URI前缀
 	let base64_string = general_purpose::STANDARD.encode(&buffer);
-	Ok(format!("data:image/jpeg;base64,{}", base64_string))
+	Ok(format!("data:image/jpeg;base64,{base64_string}"))
 }
 
 /// 生成置信度分布直方图数据
@@ -106,8 +106,8 @@ pub fn analyze_threshold_effects(
 	all_predictions: &[(String, f32)],
 	general_threshold: f32,
 	character_threshold: f32,
-	mcut_enabled: bool,
-	label_map: &std::collections::HashMap<usize, (String, u32)>,
+	_mcut_enabled: bool,
+	_label_map: &std::collections::HashMap<usize, (String, u32)>,
 ) -> ThresholdAnalysis {
 	let tags_before_general = all_predictions.len();
 	let tags_before_character = all_predictions.len();
@@ -168,7 +168,7 @@ pub fn generate_filtered_tags_info(
 
 		let category = label_map
 			.iter()
-			.find(|(_, (_, cat_id))| {
+			.find(|(_, (_, _cat_id))| {
 				// 这里需要通过某种方式匹配标签到分类
 				final_tag.contains("rating")
 					|| final_tag.contains("general")

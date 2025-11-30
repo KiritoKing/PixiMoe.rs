@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT \n            category_id,\n            name,\n            color_code,\n            is_builtin as \"is_builtin: bool\",\n            sort_order\n        FROM TagCategories\n        ORDER BY sort_order ASC, name ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "category_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "color_code",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_builtin: bool",
+        "ordinal": 3,
+        "type_info": "Bool"
+      },
+      {
+        "name": "sort_order",
+        "ordinal": 4,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1922a11dcecc2991a6e2773e681ca594e72a61ff30ab86b2e781a0285ed6845a"
+}

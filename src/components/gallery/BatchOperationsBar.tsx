@@ -1,4 +1,4 @@
-import { CheckSquare, Edit, Trash2, X } from "lucide-react";
+import { CheckSquare, Edit, Heart, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -9,6 +9,8 @@ interface BatchOperationsBarProps {
 	onSelectAll: () => void;
 	onDelete: () => void;
 	onEditTags: () => void;
+	onAddFavorites?: () => void;
+	onRemoveFavorites?: () => void;
 }
 
 export function BatchOperationsBar({
@@ -18,6 +20,8 @@ export function BatchOperationsBar({
 	onSelectAll,
 	onDelete,
 	onEditTags,
+	onAddFavorites,
+	onRemoveFavorites,
 }: BatchOperationsBarProps) {
 	return (
 		<div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
@@ -53,6 +57,20 @@ export function BatchOperationsBar({
 						<Edit className="w-4 h-4 mr-2" />
 						编辑标签
 					</Button>
+
+					{onAddFavorites && (
+						<Button variant="outline" size="sm" onClick={onAddFavorites}>
+							<Heart className="w-4 h-4 mr-2" />
+							添加到收藏
+						</Button>
+					)}
+
+					{onRemoveFavorites && (
+						<Button variant="outline" size="sm" onClick={onRemoveFavorites}>
+							<Heart className="w-4 h-4 mr-2 fill-red-500 text-red-500" />
+							取消收藏
+						</Button>
+					)}
 
 					<Button variant="destructive" size="sm" onClick={onDelete}>
 						<Trash2 className="w-4 h-4 mr-2" />

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE TagCategories SET sort_order = ? WHERE category_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "14317e6ae979754dd532549ceca9b755a6c725eef755a8322332bc6a5bc7b09b"
+}

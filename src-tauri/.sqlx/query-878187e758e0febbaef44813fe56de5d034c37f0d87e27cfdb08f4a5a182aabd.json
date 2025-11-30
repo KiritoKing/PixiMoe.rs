@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM TagCategories WHERE category_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "878187e758e0febbaef44813fe56de5d034c37f0d87e27cfdb08f4a5a182aabd"
+}

@@ -70,9 +70,6 @@ export function TagInput({ value, onChange, placeholder = "Add tags..." }: TagIn
 					onFocus={() => input && setShowSuggestions(true)}
 					onBlur={() => {
 						setTimeout(() => setShowSuggestions(false), 200);
-						if (input.trim()) {
-							handleAddTag(input);
-						}
 					}}
 					placeholder={value.length === 0 ? placeholder : ""}
 					className="flex-1 min-w-[120px] outline-none bg-transparent text-sm"

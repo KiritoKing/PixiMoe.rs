@@ -138,8 +138,7 @@ fn verify_hash(calculated: &str, expected: Option<&str>) -> Result<bool, AppErro
 				Ok(true)
 			} else {
 				Err(AppError::Custom(format!(
-					"Hash verification failed. Expected: {}, Got: {}",
-					expected_hash, calculated
+					"Hash verification failed. Expected: {expected_hash}, Got: {calculated}"
 				)))
 			}
 		}
@@ -166,7 +165,7 @@ pub async fn upload_tag_model_file(
 	if !source_path.exists() {
 		return Ok(ModelUploadResult {
 			success: false,
-			message: format!("Source file does not exist: {}", file_path),
+			message: format!("Source file does not exist: {file_path}"),
 			file_path: None,
 			calculated_hash: None,
 		});
@@ -214,7 +213,7 @@ pub async fn upload_label_map_file(
 	if !source_path.exists() {
 		return Ok(ModelUploadResult {
 			success: false,
-			message: format!("Source file does not exist: {}", file_path),
+			message: format!("Source file does not exist: {file_path}"),
 			file_path: None,
 			calculated_hash: None,
 		});
@@ -519,8 +518,7 @@ pub async fn debug_model_preprocess(
 	let max_dim = std::cmp::max(width, height);
 	result.padded_size = (max_dim, max_dim);
 	result.preprocessing_steps.push(format!(
-		"Padded to square: {}x{} pixels (white background)",
-		max_dim, max_dim
+		"Padded to square: {max_dim}x{max_dim} pixels (white background)"
 	));
 
 	result.final_size = (448, 448);

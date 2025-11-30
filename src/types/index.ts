@@ -14,8 +14,23 @@ export interface FileRecord {
 export interface Tag {
 	tag_id: number;
 	name: string;
-	type: string;
+	type: string; // Legacy field, kept for backward compatibility
+	category_id: number; // New field for category system
 	file_count?: number;
+}
+
+export interface TagCategory {
+	category_id: number;
+	name: string;
+	color_code: string;
+	is_builtin: boolean;
+	sort_order: number;
+}
+
+export interface Favorite {
+	favorite_id: number;
+	file_hash: string;
+	created_at: string; // ISO 8601 datetime string
 }
 
 export interface ImportResult {

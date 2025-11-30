@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT \n            favorite_id,\n            file_hash,\n            datetime(created_at, 'localtime') as created_at\n        FROM Favorites\n        ORDER BY created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "favorite_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "file_hash",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "1980d9d1a974e84a60921c2f6560c82b516fd36fc7b532d7246f29776649f248"
+}
