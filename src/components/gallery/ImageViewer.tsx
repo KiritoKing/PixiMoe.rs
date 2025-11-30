@@ -12,8 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useCategories } from "@/lib/hooks/useCategories";
 import { useAddTag, useRemoveTag, useRunAITagging } from "@/lib/hooks/useTagManagement";
 import { useFileTags } from "@/lib/hooks/useTags";
+import { getTagCategoryColor } from "@/lib/utils";
 import type { FileRecord } from "@/types";
 
 interface ImageViewerProps {
@@ -32,6 +34,7 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
 		height: number;
 	} | null>(null);
 	const { data: tags = [] } = useFileTags(file.file_hash);
+	const { data: categories } = useCategories();
 	const addTagMutation = useAddTag();
 	const removeTagMutation = useRemoveTag();
 	const aiTagMutation = useRunAITagging();
@@ -381,6 +384,13 @@ export function ImageViewer({ file, allFiles, onClose, onNavigate }: ImageViewer
 														key={tag.tag_id}
 														variant="secondary"
 														className="gap-1"
+														style={{
+															borderLeftColor: getTagCategoryColor(
+																tag,
+																categories
+															),
+															borderLeftWidth: "3px",
+														}}
 													>
 														{tag.name}
 														<button

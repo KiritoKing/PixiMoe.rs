@@ -8,7 +8,12 @@ Current tag system has critical AI classification bugs, lacks organization featu
 - Add custom tag categories with color coding and user-defined organization
 - Implement favorites functionality for quick content access
 - Enhance tag filter UI with sorting, collapsible sections, and selected tags display
-- Add comprehensive tag management capabilities
+- **Add comprehensive tag management capabilities:**
+  - Edit tag names (rename tags)
+  - Move tags between categories
+  - Delete tags with confirmation and impact analysis
+  - Bulk operations for efficient tag management
+  - Tag management UI integrated into settings panel
 
 ## Impact
 - **Affected specs:** ai-tagging, tag-management, favorites, file-management, ui-components
@@ -24,6 +29,8 @@ Current tag system has critical AI classification bugs, lacks organization featu
 - Users can create unlimited custom categories with colors
 - Favorites integrate seamlessly with tag filtering
 - Tag filter UI provides efficient organization and search
+- **Users can edit, move, and delete tags through dedicated management interface**
+- **Tag management operations preserve data integrity and provide clear feedback**
 - Complete system works cohesively without breaking existing functionality
 
 ## Risk Assessment

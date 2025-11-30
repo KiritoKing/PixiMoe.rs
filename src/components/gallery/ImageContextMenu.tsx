@@ -1,7 +1,8 @@
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Heart, Trash2 } from "lucide-react";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent } from "@/components/ui/popover";
+import { useFavoriteStatus, useToggleFavorite } from "@/lib/hooks/useFavorites";
 import type { FileRecord } from "@/types";
 
 interface ImageContextMenuProps {
@@ -21,6 +22,14 @@ export function ImageContextMenu({
 	onDelete,
 	onEditTags,
 }: ImageContextMenuProps) {
+	const { data: isFavorite = false } = useFavoriteStatus(file.file_hash);
+	const toggleFavorite = useToggleFavorite();
+
+	const handleToggleFavorite = () => {
+		toggleFavorite.mutate(file.file_hash);
+		onClose();
+	};
+
 	// Handle escape key
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
@@ -83,6 +92,16 @@ export function ImageContextMenu({
 					>
 						<Edit className="mr-2 h-4 w-4" />
 						编辑标签
+					</Button>
+					<Button
+						variant="ghost"
+						className="w-full justify-start px-3 py-2 text-sm h-auto"
+						onClick={handleToggleFavorite}
+					>
+						<Heart
+							className={`mr-2 h-4 w-4 ${isFavorite ? "fill-red-500 text-red-500" : ""}`}
+						/>
+						{isFavorite ? "取消收藏" : "添加到收藏"}
 					</Button>
 					<div className="border-t my-1" />
 					<Button

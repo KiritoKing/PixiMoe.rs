@@ -52,7 +52,15 @@
 - [x] Create Favorites table with proper constraints and indexes
 - [x] Implement favorite status caching for performance
 
-### 2.3 Enhanced Query Systems
+### 2.3 Tag Management APIs
+- [x] Implement update_tag() command for renaming and moving tags
+- [x] Add delete_tag() command with cascade deletion
+- [x] Tag usage count available via file_count in get_all_tags() query
+- [x] Implement tag name validation and uniqueness checks (in update_tag)
+- [x] Add comprehensive error handling for tag operations
+- **Note**: Bulk operations can use multiple update_tag/delete_tag calls sequentially
+
+### 2.4 Enhanced Query Systems
 - [x] Update tag queries to support category filtering
 - [x] Implement combined favorites + tag filtering with AND logic
 - [x] Optimize database queries for performance with new joins
@@ -61,46 +69,56 @@
 ## Phase 3: Core UI Components (3-4 days)
 
 ### 3.1 Tag Filter Panel Redesign
-- [ ] Redesign TagFilterPanel with new layout structure
-- [ ] Create SelectedTagsArea component with horizontal scroll and removal
-- [ ] Build CollapsibleCategorySection component with animations
-- [ ] Implement EmptyTagsSection component with horizontal layout
-- [ ] Create SortControl component for multiple sorting modes
+- [x] Redesign TagFilterPanel with new layout structure
+- [x] Create SelectedTagsArea component with horizontal scroll and removal
+- [x] Build CollapsibleCategorySection component with animations
+- [x] Implement EmptyTagsSection component with horizontal layout
+- [x] Create SortControl component for multiple sorting modes
 
 ### 3.2 Category Management UI
-- [ ] Create CategoryManager component with CRUD operations
-- [ ] Implement ColorPicker component for category customization
-- [ ] Build DragAndDropList for category reordering
-- [ ] Add CategoryForm for creating/editing categories
-- [ ] Create CategoryList with protected category indicators
+- [x] Create CategoryManager component with CRUD operations
+- [x] Implement ColorPicker component for category customization
+- [x] Build DragAndDropList for category reordering
+- [x] Add CategoryForm for creating/editing categories
+- [x] Create CategoryList with protected category indicators
 
 ### 3.3 Favorites UI Components
-- [ ] Create FavoriteButton component with toggle functionality
-- [ ] Build HeartIcon component with filled/unfilled states
-- [ ] Implement FavoriteBadge for displaying counts
-- [ ] Add FavoriteCheckbox for filter panel integration
+- [x] Create FavoriteButton component with toggle functionality
+- [x] Build HeartIcon component with filled/unfilled states
+- [x] Implement FavoriteBadge for displaying counts
+- [x] Add FavoriteCheckbox for filter panel integration
 
 ### 3.4 Integration with Existing Components
-- [ ] Update ImageViewer with favorite controls
-- [ ] Enhance ImageGrid with favorite overlay indicators
-- [ ] Extend BatchTagEditor with favorite operations
-- [ ] Add favorite options to context menus
-- [ ] Update tag display components to show category colors
+- [x] Update ImageViewer with favorite controls
+- [x] Enhance ImageGrid with favorite overlay indicators
+- [x] Extend BatchTagEditor with favorite operations
+- [x] Add favorite options to context menus
+- [x] Update tag display components to show category colors
+
+### 3.5 Tag Management UI
+- [x] Create TagManager component with full CRUD operations
+- [x] Implement TagEditDialog for renaming tags
+- [x] Build TagCategorySelector for moving tags between categories (integrated in TagEditDialog)
+- [x] Add TagDeleteDialog with confirmation and impact information
+- [x] Create TagList component with search, filtering, and sorting
+- [x] Implement bulk tag operations (move, delete) with multi-select support
+- [x] Add tag management hooks (useUpdateTag, useDeleteTag)
+- [x] Integrate TagManager into SettingsPanel
 
 ## Phase 4: Enhanced Features Implementation (2-3 days)
 
 ### 4.1 Sorting and Search Enhancement
-- [ ] Implement multiple sorting modes (alphabetical, count ascending/descending)
-- [ ] Add search debouncing for performance optimization
-- [ ] Create real-time search across all tag sections
+- [x] Implement multiple sorting modes (alphabetical, count ascending/descending)
+- [x] Add search debouncing for performance optimization
+- [x] Create real-time search across all tag sections
 - [ ] Add search highlighting and result count display
-- [ ] Persist sort preferences and search state
+- [x] Persist sort preferences and search state
 
 ### 4.2 State Management and Persistence
-- [ ] Implement category state management (collapse, order)
-- [ ] Add selected tags display state synchronization
-- [ ] Create user preference persistence for sorting and layout
-- [ ] Implement optimistic updates for immediate UI feedback
+- [x] Implement category state management (collapse, order)
+- [x] Add selected tags display state synchronization
+- [x] Create user preference persistence for sorting and layout
+- [x] Implement optimistic updates for immediate UI feedback
 - [ ] Add conflict resolution for concurrent operations
 
 ### 4.3 Performance Optimization
@@ -120,11 +138,11 @@
 - [ ] Add touch gesture support for drag-and-drop operations
 
 ### 5.2 Animation and Interaction Polish
-- [ ] Add smooth animations for category collapse/expand
-- [ ] Implement visual feedback for favorite status changes
-- [ ] Create loading states for large operations
-- [ ] Add progress indicators for batch operations
-- [ **NEEDS COMPLETION**: Implement keyboard shortcuts for power users
+- [x] Add smooth animations for category collapse/expand
+- [x] Implement visual feedback for favorite status changes
+- [x] Create loading states for large operations
+- [x] Add progress indicators for batch operations
+- [x] Implement keyboard shortcuts for power users
 
 ## Phase 6: Testing and Validation (2 days)
 
@@ -155,6 +173,9 @@
 - Users can create unlimited custom categories with color coding
 - Favorites integrate seamlessly with tag filtering (AND logic)
 - Tag filter UI provides efficient organization and instant search
+- **Users can edit, move, and delete tags through dedicated management interface**
+- **Tag management operations preserve data integrity and provide clear feedback**
+- **Bulk tag operations work efficiently for large tag collections**
 - Complete system works cohesively without breaking existing functionality
 - Performance acceptable with large tag collections (1000+ tags)
 - Full accessibility compliance (keyboard navigation, screen readers)

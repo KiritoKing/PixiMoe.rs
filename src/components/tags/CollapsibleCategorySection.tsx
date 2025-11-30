@@ -1,7 +1,8 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getUIPreference, setUIPreference, UI_PREFERENCE_KEYS } from "@/lib/ui-persister";
 import { cn } from "@/lib/utils";
 import type { Tag, TagCategory } from "@/types";
 
@@ -22,6 +23,34 @@ export function CollapsibleCategorySection({
 }: CollapsibleCategorySectionProps) {
 	const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
+	// Load persisted collapsed state
+	useEffect(() => {
+		const loadCollapsedState = async () => {
+			const collapsedStates = await getUIPreference<Record<number, boolean>>(
+				UI_PREFERENCE_KEYS.CATEGORY_COLLAPSED_STATES,
+				{}
+			);
+			if (collapsedStates[category.category_id] !== undefined) {
+				setIsCollapsed(collapsedStates[category.category_id]);
+			}
+		};
+		loadCollapsedState();
+	}, [category.category_id]);
+
+	// Save collapsed state when it changes
+	const handleToggleCollapse = async () => {
+		const newCollapsed = !isCollapsed;
+		setIsCollapsed(newCollapsed);
+
+		// Persist the state
+		const collapsedStates = await getUIPreference<Record<number, boolean>>(
+			UI_PREFERENCE_KEYS.CATEGORY_COLLAPSED_STATES,
+			{}
+		);
+		collapsedStates[category.category_id] = newCollapsed;
+		await setUIPreference(UI_PREFERENCE_KEYS.CATEGORY_COLLAPSED_STATES, collapsedStates);
+	};
+
 	if (tags.length === 0) {
 		return null;
 	}
@@ -33,7 +62,7 @@ export function CollapsibleCategorySection({
 			{/* Category Header */}
 			<button
 				type="button"
-				onClick={() => setIsCollapsed(!isCollapsed)}
+				onClick={handleToggleCollapse}
 				className="w-full flex items-center justify-between p-2 rounded hover:bg-accent transition-colors group"
 			>
 				<div className="flex items-center gap-2 min-w-0 flex-1">

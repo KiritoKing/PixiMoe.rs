@@ -152,3 +152,49 @@ export function useBatchAITagging() {
 		},
 	});
 }
+
+// Update tag (rename and/or move to different category)
+export function useUpdateTag() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			tagId,
+			name,
+			categoryId,
+		}: {
+			tagId: number;
+			name: string;
+			categoryId: number;
+		}) => {
+			return invoke<void>("update_tag", {
+				tagId,
+				name,
+				categoryId,
+			});
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["tags"] });
+			queryClient.invalidateQueries({ queryKey: ["categories"] });
+			queryClient.invalidateQueries({ queryKey: ["file-tags"] });
+			queryClient.invalidateQueries({ queryKey: ["search-files"] });
+		},
+	});
+}
+
+// Delete tag
+export function useDeleteTag() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (tagId: number) => {
+			return invoke<void>("delete_tag", { tagId });
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["tags"] });
+			queryClient.invalidateQueries({ queryKey: ["file-tags"] });
+			queryClient.invalidateQueries({ queryKey: ["search-files"] });
+			queryClient.invalidateQueries({ queryKey: ["files"] });
+		},
+	});
+}

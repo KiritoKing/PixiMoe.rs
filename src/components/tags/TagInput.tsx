@@ -1,7 +1,10 @@
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { useCategories } from "@/lib/hooks/useCategories";
 import { useSearchTags } from "@/lib/hooks/useTagManagement";
+import { useTags } from "@/lib/hooks/useTags";
+import { getTagCategoryColor } from "@/lib/utils";
 
 interface TagInputProps {
 	value: string[];
@@ -14,6 +17,8 @@ export function TagInput({ value, onChange, placeholder = "Add tags..." }: TagIn
 	const [showSuggestions, setShowSuggestions] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const { data: suggestions = [] } = useSearchTags(input);
+	const { data: allTags = [] } = useTags();
+	const { data: categories } = useCategories();
 
 	useEffect(() => {
 		setShowSuggestions(input.length > 0 && suggestions.length > 0);
@@ -49,18 +54,33 @@ export function TagInput({ value, onChange, placeholder = "Add tags..." }: TagIn
 	return (
 		<div className="relative w-full">
 			<div className="flex flex-wrap gap-2 p-2 border rounded-md min-h-[42px]">
-				{value.map((tag) => (
-					<Badge key={tag} variant="secondary" className="gap-1">
-						{tag}
-						<button
-							type="button"
-							onClick={() => handleRemoveTag(tag)}
-							className="hover:text-blue-600"
+				{value.map((tagName) => {
+					const tag = allTags.find((t) => t.name === tagName);
+					return (
+						<Badge
+							key={tagName}
+							variant="secondary"
+							className="gap-1"
+							style={
+								tag
+									? {
+											borderLeftColor: getTagCategoryColor(tag, categories),
+											borderLeftWidth: "3px",
+										}
+									: undefined
+							}
 						>
-							<X className="w-3 h-3" />
-						</button>
-					</Badge>
-				))}
+							{tagName}
+							<button
+								type="button"
+								onClick={() => handleRemoveTag(tagName)}
+								className="hover:text-blue-600"
+							>
+								<X className="w-3 h-3" />
+							</button>
+						</Badge>
+					);
+				})}
 				<input
 					ref={inputRef}
 					type="text"

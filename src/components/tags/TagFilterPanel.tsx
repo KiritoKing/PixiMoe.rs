@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { FavoriteCheckbox } from "@/components/favorites/FavoriteCheckbox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useTags } from "@/lib/hooks/useTags";
+import { getUIPreference, setUIPreference, UI_PREFERENCE_KEYS } from "@/lib/ui-persister";
 import type { Tag } from "@/types";
 import { CollapsibleCategorySection } from "./CollapsibleCategorySection";
 import { EmptyTagsSection } from "./EmptyTagsSection";
@@ -15,14 +17,61 @@ import { SortControl, type SortMode } from "./SortControl";
 interface TagFilterPanelProps {
 	selectedTagIds: number[];
 	onTagsChange: (tagIds: number[]) => void;
+	searchInputRef?: React.RefObject<HTMLInputElement | null>;
+	favoritesOnly?: boolean;
+	onFavoritesOnlyChange?: (favoritesOnly: boolean) => void;
+	fileHashes?: string[];
 }
 
-export function TagFilterPanel({ selectedTagIds, onTagsChange }: TagFilterPanelProps) {
+export function TagFilterPanel({
+	selectedTagIds,
+	onTagsChange,
+	searchInputRef,
+	favoritesOnly = false,
+	onFavoritesOnlyChange,
+	fileHashes = [],
+}: TagFilterPanelProps) {
 	const { data: tags, isLoading: tagsLoading } = useTags();
 	const { data: categories, isLoading: categoriesLoading } = useCategories();
 	const [searchQuery, setSearchQuery] = useState("");
+	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 	const [showEmptyTags, setShowEmptyTags] = useState(false);
 	const [sortMode, setSortMode] = useState<SortMode>("alphabetical");
+
+	// Load persisted preferences
+	useEffect(() => {
+		const loadPreferences = async () => {
+			const savedSortMode = await getUIPreference<SortMode>(
+				UI_PREFERENCE_KEYS.TAG_FILTER_SORT_MODE,
+				"alphabetical"
+			);
+			const savedShowEmptyTags = await getUIPreference<boolean>(
+				UI_PREFERENCE_KEYS.TAG_FILTER_SHOW_EMPTY_TAGS,
+				false
+			);
+			setSortMode(savedSortMode);
+			setShowEmptyTags(savedShowEmptyTags);
+		};
+		loadPreferences();
+	}, []);
+
+	// Debounce search query
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedSearchQuery(searchQuery);
+		}, 300); // 300ms debounce
+
+		return () => clearTimeout(timer);
+	}, [searchQuery]);
+
+	// Save preferences when they change
+	useEffect(() => {
+		setUIPreference(UI_PREFERENCE_KEYS.TAG_FILTER_SORT_MODE, sortMode);
+	}, [sortMode]);
+
+	useEffect(() => {
+		setUIPreference(UI_PREFERENCE_KEYS.TAG_FILTER_SHOW_EMPTY_TAGS, showEmptyTags);
+	}, [showEmptyTags]);
 
 	const isLoading = tagsLoading || categoriesLoading;
 
@@ -38,13 +87,13 @@ export function TagFilterPanel({ selectedTagIds, onTagsChange }: TagFilterPanelP
 		onTagsChange([]);
 	};
 
-	// Filter tags by search query
+	// Filter tags by search query (using debounced query)
 	const filteredTags = useMemo(() => {
 		if (!tags) return [];
-		if (!searchQuery.trim()) return tags;
-		const query = searchQuery.toLowerCase();
+		if (!debouncedSearchQuery.trim()) return tags;
+		const query = debouncedSearchQuery.toLowerCase();
 		return tags.filter((tag) => tag.name.toLowerCase().includes(query));
-	}, [tags, searchQuery]);
+	}, [tags, debouncedSearchQuery]);
 
 	// Separate tags into those with files and those without
 	const tagsWithFiles = useMemo(
@@ -154,12 +203,24 @@ export function TagFilterPanel({ selectedTagIds, onTagsChange }: TagFilterPanelP
 
 				{/* Search */}
 				<Input
+					ref={searchInputRef}
 					type="text"
-					placeholder="搜索标签..."
+					placeholder="搜索标签... (Ctrl+K)"
 					value={searchQuery}
 					onChange={(e) => setSearchQuery(e.target.value)}
 					className="w-full"
 				/>
+
+				{/* Favorites filter */}
+				{onFavoritesOnlyChange && (
+					<div className="mt-3">
+						<FavoriteCheckbox
+							fileHashes={fileHashes}
+							onChange={onFavoritesOnlyChange}
+							checked={favoritesOnly}
+						/>
+					</div>
+				)}
 
 				{/* Show empty tags toggle */}
 				<div className="mt-3 flex items-center gap-2">

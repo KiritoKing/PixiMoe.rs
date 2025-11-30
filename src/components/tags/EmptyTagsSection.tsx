@@ -1,4 +1,6 @@
 import { Badge } from "@/components/ui/badge";
+import { useCategories } from "@/lib/hooks/useCategories";
+import { getTagCategoryColor } from "@/lib/utils";
 import type { Tag } from "@/types";
 
 interface EmptyTagsSectionProps {
@@ -6,6 +8,8 @@ interface EmptyTagsSectionProps {
 }
 
 export function EmptyTagsSection({ tags }: EmptyTagsSectionProps) {
+	const { data: categories } = useCategories();
+
 	if (tags.length === 0) {
 		return null;
 	}
@@ -21,6 +25,10 @@ export function EmptyTagsSection({ tags }: EmptyTagsSectionProps) {
 						key={tag.tag_id}
 						variant="outline"
 						className="px-2.5 py-0.5 cursor-default opacity-60 max-w-[200px] shrink-0"
+						style={{
+							borderLeftColor: getTagCategoryColor(tag, categories),
+							borderLeftWidth: "3px",
+						}}
 					>
 						<span className="text-xs truncate block" title={tag.name}>
 							{tag.name}

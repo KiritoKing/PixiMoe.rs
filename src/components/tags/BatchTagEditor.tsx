@@ -1,11 +1,15 @@
-import { Tag, Wand2, X } from "lucide-react";
+import { Heart, Tag, Wand2, X } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { useCategories } from "@/lib/hooks/useCategories";
+import { useAddFavorites, useRemoveFavorites } from "@/lib/hooks/useFavorites";
 import {
 	useBatchAddTags,
 	useBatchAITagging,
 	useBatchRemoveTag,
 } from "@/lib/hooks/useTagManagement";
+import { useTags } from "@/lib/hooks/useTags";
+import { getTagCategoryColor } from "@/lib/utils";
 import { TagInput } from "./TagInput";
 
 interface BatchTagEditorProps {
@@ -23,9 +27,13 @@ export function BatchTagEditor({
 	const [showRemoveConfirm, setShowRemoveConfirm] = useState<number | null>(null);
 	const [showAIConfirm, setShowAIConfirm] = useState(false);
 
+	const { data: allTags = [] } = useTags();
+	const { data: categories } = useCategories();
 	const batchAddMutation = useBatchAddTags();
 	const batchRemoveMutation = useBatchRemoveTag();
 	const batchAIMutation = useBatchAITagging();
+	const addFavoritesMutation = useAddFavorites();
+	const removeFavoritesMutation = useRemoveFavorites();
 
 	const handleAddTags = async () => {
 		if (tagsToAdd.length === 0) return;
@@ -65,6 +73,24 @@ export function BatchTagEditor({
 		}
 	};
 
+	const handleAddFavorites = async () => {
+		try {
+			const count = await addFavoritesMutation.mutateAsync(selectedHashes);
+			toast.success(`Added ${count} file(s) to favorites`);
+		} catch (error) {
+			toast.error(`Failed to add favorites: ${error}`);
+		}
+	};
+
+	const handleRemoveFavorites = async () => {
+		try {
+			const count = await removeFavoritesMutation.mutateAsync(selectedHashes);
+			toast.success(`Removed ${count} file(s) from favorites`);
+		} catch (error) {
+			toast.error(`Failed to remove favorites: ${error}`);
+		}
+	};
+
 	if (selectedHashes.length === 0) return null;
 
 	return (
@@ -86,15 +112,37 @@ export function BatchTagEditor({
 							Clear Selection
 						</button>
 					</div>
-					<button
-						type="button"
-						onClick={() => setShowAIConfirm(true)}
-						disabled={batchAIMutation.isPending}
-						className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded disabled:opacity-50"
-					>
-						<Wand2 className="w-4 h-4" />
-						{batchAIMutation.isPending ? "Running AI..." : "Run AI Tagging"}
-					</button>
+					<div className="flex items-center gap-2">
+						<button
+							type="button"
+							onClick={handleAddFavorites}
+							disabled={addFavoritesMutation.isPending}
+							className="flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded disabled:opacity-50"
+						>
+							<Heart className="w-4 h-4" />
+							{addFavoritesMutation.isPending ? "Adding..." : "Add to Favorites"}
+						</button>
+						<button
+							type="button"
+							onClick={handleRemoveFavorites}
+							disabled={removeFavoritesMutation.isPending}
+							className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded disabled:opacity-50"
+						>
+							<Heart className="w-4 h-4" />
+							{removeFavoritesMutation.isPending
+								? "Removing..."
+								: "Remove from Favorites"}
+						</button>
+						<button
+							type="button"
+							onClick={() => setShowAIConfirm(true)}
+							disabled={batchAIMutation.isPending}
+							className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded disabled:opacity-50"
+						>
+							<Wand2 className="w-4 h-4" />
+							{batchAIMutation.isPending ? "Running AI..." : "Run AI Tagging"}
+						</button>
+					</div>
 				</div>
 
 				{/* Common tags - optimized for performance */}
@@ -105,21 +153,35 @@ export function BatchTagEditor({
 						</h4>
 						<div className="flex flex-wrap gap-2 mb-2">
 							{/* Show first 30 common tags */}
-							{commonTags.slice(0, 30).map((tag) => (
-								<span
-									key={tag.tag_id}
-									className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded text-sm"
-								>
-									{tag.name}
-									<button
-										type="button"
-										onClick={() => setShowRemoveConfirm(tag.tag_id)}
-										className="hover:text-red-600 dark:hover:text-red-400"
+							{commonTags.slice(0, 30).map((tag) => {
+								const fullTag = allTags.find((t) => t.tag_id === tag.tag_id);
+								return (
+									<span
+										key={tag.tag_id}
+										className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded text-sm"
+										style={
+											fullTag
+												? {
+														borderLeftColor: getTagCategoryColor(
+															fullTag,
+															categories
+														),
+														borderLeftWidth: "3px",
+													}
+												: undefined
+										}
 									>
-										<X className="w-3 h-3" />
-									</button>
-								</span>
-							))}
+										{tag.name}
+										<button
+											type="button"
+											onClick={() => setShowRemoveConfirm(tag.tag_id)}
+											className="hover:text-red-600 dark:hover:text-red-400"
+										>
+											<X className="w-3 h-3" />
+										</button>
+									</span>
+								);
+							})}
 						</div>
 						{commonTags.length > 30 && (
 							<div className="text-xs text-muted-foreground">

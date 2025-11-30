@@ -46,6 +46,66 @@ Users SHALL be able to assign multiple tags to categories efficiently through bu
 - **AND** interface provides visual feedback for all operations
 - **AND** supports keyboard navigation for power users
 
+### Requirement: Tag CRUD Operations
+Users SHALL be able to edit, move, and delete tags themselves through a dedicated management interface.
+
+#### Scenario: Edit tag name
+- **WHEN** user wants to rename a tag
+- **THEN** they can access tag management interface from settings
+- **AND** click edit button on a tag
+- **AND** modify tag name in a dialog/form
+- **AND** system validates name is not empty and unique
+- **AND** all file associations are preserved after rename
+- **AND** changes are reflected immediately across all tag displays
+
+#### Scenario: Move tag to different category
+- **WHEN** user wants to reorganize tags
+- **THEN** they can select a tag and change its category
+- **AND** category dropdown shows all available categories with color indicators
+- **AND** tag is moved to selected category immediately
+- **AND** visual color indicator updates across all displays
+- **AND** operation can be performed on multiple tags at once
+
+#### Scenario: Delete tag
+- **WHEN** user wants to remove a tag completely
+- **THEN** they can select delete action on a tag
+- **AND** system shows confirmation dialog with:
+  - Tag name
+  - Number of files currently using this tag
+  - Warning about permanent deletion
+- **AND** user must confirm deletion explicitly
+- **AND** deletion removes tag from Tags table
+- **AND** all file-tag associations are automatically removed (cascade delete)
+- **AND** operation cannot be undone
+
+#### Scenario: Tag management UI layout
+- **WHEN** user opens tag management interface
+- **THEN** interface displays:
+  - Search bar for filtering tags
+  - List of tags grouped by category (collapsible sections)
+  - Each tag shows: name, category color, file count
+  - Action buttons: Edit, Move Category, Delete
+- **AND** tags can be sorted by name, category, or file count
+- **AND** empty tags (file_count = 0) are clearly marked
+- **AND** interface supports bulk selection for batch operations
+
+#### Scenario: Bulk tag operations
+- **WHEN** user selects multiple tags
+- **THEN** they can perform bulk operations:
+  - Move all selected tags to a category
+  - Delete all selected tags (with confirmation showing total affected files)
+- **AND** bulk operations show progress indicator
+- **AND** operations are atomic (all succeed or all fail)
+- **AND** user receives feedback on operation completion
+
+#### Scenario: Tag search and filtering
+- **WHEN** user searches for tags in management interface
+- **THEN** search filters tags by name in real-time
+- **AND** search supports partial matches
+- **AND** results are grouped by category
+- **AND** empty tags can be filtered out
+- **AND** category filter allows showing tags from specific categories only
+
 ## MODIFIED Requirements
 
 ### Requirement: Tag Database Schema Enhancement

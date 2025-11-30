@@ -1,6 +1,8 @@
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useCategories } from "@/lib/hooks/useCategories";
+import { getTagCategoryColor } from "@/lib/utils";
 import type { Tag } from "@/types";
 
 interface SelectedTagsAreaProps {
@@ -10,6 +12,8 @@ interface SelectedTagsAreaProps {
 }
 
 export function SelectedTagsArea({ selectedTags, onRemoveTag, onClearAll }: SelectedTagsAreaProps) {
+	const { data: categories } = useCategories();
+
 	if (selectedTags.length === 0) {
 		return null;
 	}
@@ -35,6 +39,10 @@ export function SelectedTagsArea({ selectedTags, onRemoveTag, onClearAll }: Sele
 							key={tag.tag_id}
 							variant="secondary"
 							className="gap-1 pr-1 cursor-default flex-shrink-0 max-w-[200px]"
+							style={{
+								borderLeftColor: getTagCategoryColor(tag, categories),
+								borderLeftWidth: "3px",
+							}}
 						>
 							<span className="text-xs truncate" title={tag.name}>
 								{tag.name}

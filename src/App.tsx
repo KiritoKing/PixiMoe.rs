@@ -1,7 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Toaster } from "react-hot-toast";
-import { FavoriteCheckbox } from "./components/favorites/FavoriteCheckbox";
 import { ImageGrid } from "./components/gallery/ImageGrid";
 import { ImportButton } from "./components/import/ImportButton";
 import { NotificationCenter } from "./components/notifications/NotificationCenter";
@@ -9,6 +8,7 @@ import { SettingsPanel } from "./components/settings/SettingsPanel";
 import { TagFilterPanel } from "./components/tags/TagFilterPanel";
 import { ThemeToggle } from "./components/theme-toggle";
 import { useFiles } from "./lib/hooks/useFiles";
+import { useKeyboardShortcuts } from "./lib/hooks/useKeyboardShortcuts";
 import { useSearchFiles } from "./lib/hooks/useSearchFiles";
 import { useTauriEvent } from "./lib/hooks/useTauriEvent";
 import "./App.css";
@@ -17,6 +17,33 @@ function App() {
 	const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 	const [favoritesOnly, setFavoritesOnly] = useState(false);
 	const queryClient = useQueryClient();
+	const searchInputRef = useRef<HTMLInputElement>(null);
+
+	// Keyboard shortcuts
+	useKeyboardShortcuts([
+		{
+			key: "Escape",
+			handler: () => {
+				if (selectedTagIds.length > 0) {
+					setSelectedTagIds([]);
+				}
+			},
+		},
+		{
+			key: "f",
+			ctrl: true,
+			handler: () => {
+				setFavoritesOnly(!favoritesOnly);
+			},
+		},
+		{
+			key: "k",
+			ctrl: true,
+			handler: () => {
+				searchInputRef.current?.focus();
+			},
+		},
+	]);
 
 	// Listen for thumbnail regeneration events
 	useTauriEvent<number>(
@@ -107,15 +134,11 @@ function App() {
 						<TagFilterPanel
 							selectedTagIds={selectedTagIds}
 							onTagsChange={setSelectedTagIds}
+							searchInputRef={searchInputRef}
+							favoritesOnly={favoritesOnly}
+							onFavoritesOnlyChange={setFavoritesOnly}
+							fileHashes={fileHashes}
 						/>
-						{/* Favorites filter */}
-						<div className="p-4 border-t shrink-0">
-							<FavoriteCheckbox
-								fileHashes={fileHashes}
-								onChange={setFavoritesOnly}
-								checked={favoritesOnly}
-							/>
-						</div>
 					</div>
 
 					{/* Image grid */}
