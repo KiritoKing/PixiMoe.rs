@@ -88,11 +88,16 @@ export function TagFilterPanel({
 	};
 
 	// Filter tags by search query (using debounced query)
+	// Supports searching by both name and alias
 	const filteredTags = useMemo(() => {
 		if (!tags) return [];
 		if (!debouncedSearchQuery.trim()) return tags;
 		const query = debouncedSearchQuery.toLowerCase();
-		return tags.filter((tag) => tag.name.toLowerCase().includes(query));
+		return tags.filter(
+			(tag) =>
+				tag.name.toLowerCase().includes(query) ||
+				(tag.alias && tag.alias.toLowerCase().includes(query))
+		);
 	}, [tags, debouncedSearchQuery]);
 
 	// Separate tags into those with files and those without

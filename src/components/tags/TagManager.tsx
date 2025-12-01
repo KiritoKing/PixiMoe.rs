@@ -49,6 +49,7 @@ export function TagManager() {
 	const isLoading = tagsLoading || categoriesLoading;
 
 	// Filter tags by search query and category
+	// Supports searching by both name and alias
 	const filteredTags = useMemo(() => {
 		let filtered = tags;
 
@@ -57,10 +58,14 @@ export function TagManager() {
 			filtered = filtered.filter((tag) => tag.category_id === selectedCategoryId);
 		}
 
-		// Filter by search query
+		// Filter by search query (supports both name and alias)
 		if (searchQuery.trim()) {
 			const query = searchQuery.toLowerCase();
-			filtered = filtered.filter((tag) => tag.name.toLowerCase().includes(query));
+			filtered = filtered.filter(
+				(tag) =>
+					tag.name.toLowerCase().includes(query) ||
+					(tag.alias && tag.alias.toLowerCase().includes(query))
+			);
 		}
 
 		return filtered;

@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { useCategories } from "@/lib/hooks/useCategories";
-import { getTagCategoryColor } from "@/lib/utils";
+import { getTagCategoryColor, getTagDisplayName } from "@/lib/utils";
 import type { Tag } from "@/types";
 
 interface EmptyTagsSectionProps {
@@ -31,7 +31,7 @@ export function EmptyTagsSection({ tags }: EmptyTagsSectionProps) {
 						}}
 					>
 						<span className="text-xs truncate block" title={tag.name}>
-							{tag.name}
+							{getTagDisplayName(tag)}
 						</span>
 					</Badge>
 				))}

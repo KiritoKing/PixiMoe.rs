@@ -70,3 +70,45 @@ import { ImageCard } from "@/components/gallery/ImageCard"
 ```
 
 **Why:** Build performance, tree shaking, code clarity, refactoring safety, IDE performance.
+
+## SQLx Database Migration Rules
+
+**项目使用 SQLx 离线模式，修改数据库 schema 后必须更新离线元数据。**
+
+### 修改数据库 Schema 后的必要步骤
+
+当添加新迁移文件或修改 SQL 查询后，**必须**执行：
+
+```bash
+cd src-tauri
+export DATABASE_URL="sqlite:../piximoe.db"
+sqlx migrate run --source ../migrations
+cargo sqlx prepare
+```
+
+或使用脚本：`./scripts/prepare-sqlx.sh`
+
+### 创建新迁移
+
+```bash
+cd src-tauri
+export DATABASE_URL="sqlite:../piximoe.db"
+sqlx migrate add migration_name --source ../migrations
+# 编辑迁移文件后
+sqlx migrate run --source ../migrations
+cargo sqlx prepare
+```
+
+### 关键点
+
+1. **使用现有开发数据库**：不要创建临时数据库，使用 `../piximoe.db`
+2. **更新离线元数据**：每次修改 SQL 查询后运行 `cargo sqlx prepare`
+3. **提交 `.sqlx/` 目录**：离线元数据文件需要提交到版本控制
+4. **CI 使用离线模式**：`SQLX_OFFLINE=true`，不需要数据库连接
+
+### 常见错误
+
+- **"no such column" 编译错误**：运行 `sqlx migrate run` 和 `cargo sqlx prepare`
+- **CI 编译失败**：检查 `.sqlx/` 目录是否已提交
+
+详细文档参考：`@/docs/sqlx-migration-guide.md`

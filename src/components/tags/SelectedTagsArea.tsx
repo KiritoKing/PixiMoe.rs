@@ -2,7 +2,7 @@ import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useCategories } from "@/lib/hooks/useCategories";
-import { getTagCategoryColor } from "@/lib/utils";
+import { getTagCategoryColor, getTagDisplayName } from "@/lib/utils";
 import type { Tag } from "@/types";
 
 interface SelectedTagsAreaProps {
@@ -45,7 +45,7 @@ export function SelectedTagsArea({ selectedTags, onRemoveTag, onClearAll }: Sele
 							}}
 						>
 							<span className="text-xs truncate" title={tag.name}>
-								{tag.name}
+								{getTagDisplayName(tag)}
 							</span>
 							<button
 								type="button"

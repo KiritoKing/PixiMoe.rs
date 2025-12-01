@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 
@@ -240,11 +240,12 @@ export interface TranslationUploadResult {
 	file_path?: string;
 	valid_entries: number;
 	invalid_entries: number;
-	language_code?: string;
+	available_languages: string[];
 }
 
 export interface TranslationStatus {
-	language_code?: string;
+	current_language?: string;
+	available_languages: string[];
 	dictionary_loaded: boolean;
 	dictionary_path?: string;
 	total_translations: number;
@@ -252,12 +253,16 @@ export interface TranslationStatus {
 
 // Hooks for translation management
 export function useUploadTranslationDictionary() {
+	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async (filePath: string): Promise<TranslationUploadResult> => {
 			const result = await invoke<TranslationUploadResult>("upload_translation_dictionary", {
 				filePath,
 			});
 			return result;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["translation_status"] });
 		},
 	});
 }
@@ -269,32 +274,51 @@ export function useTranslationStatus() {
 			const result = await invoke<TranslationStatus>("get_translation_status");
 			return result;
 		},
-		refetchInterval: 5000, // Refetch every 5 seconds
+		staleTime: 1000, // Consider data fresh for 1 second
 	});
 }
 
 export function useSetTranslationLanguage() {
+	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: async (languageCode: string): Promise<void> => {
-			await invoke("set_translation_language", { languageCode });
-		},
-	});
-}
-
-export function useTranslationLanguage() {
-	return useQuery({
-		queryKey: ["translation_language"],
-		queryFn: async (): Promise<string | null> => {
-			const result = await invoke<string | null>("get_translation_language");
+		mutationFn: async (languageCode: string): Promise<number> => {
+			const result = await invoke<number>("set_translation_language", { languageCode });
 			return result;
+		},
+		onSuccess: () => {
+			// Invalidate both translation status and tags queries
+			queryClient.invalidateQueries({ queryKey: ["translation_status"] });
+			queryClient.invalidateQueries({ queryKey: ["tags"] });
+			queryClient.invalidateQueries({ queryKey: ["all_tags"] });
 		},
 	});
 }
 
 export function useRemoveTranslationDictionary() {
+	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async (): Promise<void> => {
 			await invoke("remove_translation_dictionary");
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["translation_status"] });
+			queryClient.invalidateQueries({ queryKey: ["tags"] });
+			queryClient.invalidateQueries({ queryKey: ["all_tags"] });
+		},
+	});
+}
+
+export function useRefreshTranslations() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (): Promise<number> => {
+			const result = await invoke<number>("refresh_translations");
+			return result;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["translation_status"] });
+			queryClient.invalidateQueries({ queryKey: ["tags"] });
+			queryClient.invalidateQueries({ queryKey: ["all_tags"] });
 		},
 	});
 }

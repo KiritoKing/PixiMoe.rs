@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getUIPreference, setUIPreference, UI_PREFERENCE_KEYS } from "@/lib/ui-persister";
-import { cn } from "@/lib/utils";
+import { cn, getTagDisplayName } from "@/lib/utils";
 import type { Tag, TagCategory } from "@/types";
 
 interface CollapsibleCategorySectionProps {
@@ -106,7 +106,7 @@ export function CollapsibleCategorySection({
 								className="shrink-0"
 							/>
 							<span className="flex-1 text-sm truncate min-w-0" title={tag.name}>
-								{tag.name}
+								{getTagDisplayName(tag)}
 							</span>
 							{tag.file_count !== undefined && tag.file_count > 0 && (
 								<Badge variant="outline" className="text-xs shrink-0">

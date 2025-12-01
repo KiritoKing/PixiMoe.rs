@@ -1,0 +1,3 @@
+# SQLx offline query metadata
+*.json
+!query-*.json

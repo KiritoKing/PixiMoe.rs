@@ -1,4 +1,4 @@
-import { Database, Settings, X } from "lucide-react";
+import { Database, Languages, Settings, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,6 +8,7 @@ import { TagManager } from "../tags/TagManager";
 // Import settings pages
 import { AISettingsPage } from "./AISettingsPage";
 import { DatabaseSettingsPage } from "./DatabaseSettingsPage";
+import { TranslationSettingsPage } from "./TranslationSettingsPage";
 
 // Settings pages configuration
 const SETTINGS_PAGES = [
@@ -40,6 +41,12 @@ const SETTINGS_PAGES = [
 		name: "Database",
 		icon: Database,
 		component: DatabaseSettingsPage,
+	},
+	{
+		id: "translation",
+		name: "Translation",
+		icon: Languages,
+		component: TranslationSettingsPage,
 	},
 	{
 		id: "notifications",

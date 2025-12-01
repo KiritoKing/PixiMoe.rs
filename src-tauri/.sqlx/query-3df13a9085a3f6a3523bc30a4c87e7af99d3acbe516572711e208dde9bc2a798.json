@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT t.tag_id, t.name, t.type, t.category_id,\n               COUNT(ft.file_hash) as file_count\n        FROM Tags t\n        LEFT JOIN FileTags ft ON t.tag_id = ft.tag_id\n        WHERE t.name LIKE ?\n        GROUP BY t.tag_id\n        ORDER BY COUNT(ft.file_hash) DESC, t.name ASC\n        LIMIT ?\n        ",
+  "query": "\n        SELECT t.tag_id, t.name, t.type, t.category_id, t.alias,\n               COUNT(ft.file_hash) as file_count\n        FROM Tags t\n        LEFT JOIN FileTags ft ON t.tag_id = ft.tag_id\n        WHERE t.name LIKE ? OR t.alias LIKE ?\n        GROUP BY t.tag_id\n        ORDER BY COUNT(ft.file_hash) DESC, COALESCE(t.alias, t.name) ASC\n        LIMIT ?\n        ",
   "describe": {
     "columns": [
       {
@@ -24,21 +24,27 @@
         "type_info": "Integer"
       },
       {
-        "name": "file_count",
+        "name": "alias",
         "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_count",
+        "ordinal": 5,
         "type_info": "Integer"
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 3
     },
     "nullable": [
       false,
       false,
       false,
       false,
+      true,
       false
     ]
   },
-  "hash": "3f85477e43ea71fbbd3107ff08cef092a61cddeed8d71c26a1cf84f2fd8db53b"
+  "hash": "3df13a9085a3f6a3523bc30a4c87e7af99d3acbe516572711e208dde9bc2a798"
 }

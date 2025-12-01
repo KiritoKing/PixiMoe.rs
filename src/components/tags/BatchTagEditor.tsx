@@ -69,6 +69,8 @@ export function BatchTagEditor({
 			// Don't show toast here - it will be shown by the event listener
 			// when batch_complete event is received (handled in ImportButton or App)
 			setShowAIConfirm(false);
+			// Clear selection to close the batch editor panel after task is submitted
+			onClearSelection();
 		} catch (error) {
 			// Only show error toast for immediate errors (not progress events)
 			toast.error(`AI tagging failed: ${error}`);

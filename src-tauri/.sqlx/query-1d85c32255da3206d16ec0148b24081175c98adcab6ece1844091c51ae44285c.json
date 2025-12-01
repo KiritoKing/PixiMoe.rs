@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT t.tag_id, t.name, t.type, t.category_id\n        FROM Tags t\n        INNER JOIN FileTags ft ON t.tag_id = ft.tag_id\n        WHERE ft.file_hash = ?\n        ORDER BY t.name ASC\n        ",
+  "query": "\n        SELECT t.tag_id, t.name, t.type, t.category_id, t.alias\n        FROM Tags t\n        INNER JOIN FileTags ft ON t.tag_id = ft.tag_id\n        WHERE ft.file_hash = ?\n        ORDER BY COALESCE(t.alias, t.name) ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -22,6 +22,11 @@
         "name": "category_id",
         "ordinal": 3,
         "type_info": "Integer"
+      },
+      {
+        "name": "alias",
+        "ordinal": 4,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -31,8 +36,9 @@
       true,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "22ae3ebd6df3d416f2d628e5327047577852316663e10af09980b54023abfb67"
+  "hash": "1d85c32255da3206d16ec0148b24081175c98adcab6ece1844091c51ae44285c"
 }

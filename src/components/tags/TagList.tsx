@@ -2,7 +2,7 @@ import { Edit2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getTagCategoryColor } from "@/lib/utils";
+import { getTagCategoryColor, getTagDisplayName } from "@/lib/utils";
 import type { Tag, TagCategory } from "@/types";
 
 interface TagListProps {
@@ -83,7 +83,9 @@ export function TagList({
 						{/* Tag Info */}
 						<div className="flex-1 min-w-0">
 							<div className="flex items-center gap-2">
-								<span className="font-medium truncate">{tag.name}</span>
+								<span className="font-medium truncate" title={tag.name}>
+									{getTagDisplayName(tag)}
+								</span>
 								{category && (
 									<Badge variant="outline" className="text-xs shrink-0">
 										{category.name}

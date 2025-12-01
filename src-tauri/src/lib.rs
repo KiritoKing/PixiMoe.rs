@@ -175,6 +175,7 @@ pub fn run() {
 			commands::settings::set_translation_language,
 			commands::settings::get_translation_language,
 			commands::settings::remove_translation_dictionary,
+			commands::settings::refresh_translations,
 			// Admin commands
 			commands::admin::clear_database,
 			commands::admin::get_database_stats,

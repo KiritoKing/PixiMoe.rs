@@ -17,3 +17,12 @@ export function getTagCategoryColor(tag: Tag, categories: TagCategory[] | undefi
 	const category = categories.find((cat) => cat.category_id === tag.category_id);
 	return category?.color_code ?? "#6B7280";
 }
+
+/**
+ * Get display name for a tag (alias if available, otherwise name)
+ * @param tag - Tag object with name and optional alias
+ * @returns Display name string
+ */
+export function getTagDisplayName(tag: Tag): string {
+	return tag.alias && tag.alias.trim() !== "" ? tag.alias : tag.name;
+}
