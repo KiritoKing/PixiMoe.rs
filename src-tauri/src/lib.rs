@@ -169,6 +169,12 @@ pub fn run() {
 			commands::settings::get_ai_settings,
 			commands::settings::set_ai_settings,
 			commands::settings::is_ai_enabled,
+			// Translation commands
+			commands::settings::upload_translation_dictionary,
+			commands::settings::get_translation_status,
+			commands::settings::set_translation_language,
+			commands::settings::get_translation_language,
+			commands::settings::remove_translation_dictionary,
 			// Admin commands
 			commands::admin::clear_database,
 			commands::admin::get_database_stats,

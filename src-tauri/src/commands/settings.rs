@@ -823,3 +823,337 @@ pub async fn is_ai_enabled(app: AppHandle) -> Result<bool, AppError> {
 	let settings = get_ai_settings(app).await?;
 	Ok(settings.ai_enabled)
 }
+
+// ============================================================================
+// Translation Dictionary Management
+// ============================================================================
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TranslationUploadResult {
+	pub success: bool,
+	pub message: String,
+	pub file_path: Option<String>,
+	pub valid_entries: usize,
+	pub invalid_entries: usize,
+	pub language_code: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TranslationStatus {
+	pub language_code: Option<String>,
+	pub dictionary_loaded: bool,
+	pub dictionary_path: Option<String>,
+	pub total_translations: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AliasRefreshProgress {
+	pub current: usize,
+	pub total: usize,
+	pub completed: bool,
+	pub error: Option<String>,
+}
+
+/// Get translations directory in app data directory
+fn get_translations_dir(app: AppHandle) -> Result<PathBuf, AppError> {
+	let app_data_dir = app
+		.path()
+		.app_data_dir()
+		.map_err(|e| AppError::Custom(format!("Failed to get app data directory: {e}")))?;
+
+	let translations_dir = app_data_dir.join("translations");
+	std::fs::create_dir_all(&translations_dir)
+		.map_err(|e| AppError::Custom(format!("Failed to create translations directory: {e}")))?;
+
+	Ok(translations_dir)
+}
+
+/// Parse translation dictionary CSV file with fault tolerance
+async fn parse_translation_csv(
+	file_path: &Path,
+) -> Result<(Vec<(i64, String, String)>, usize), AppError> {
+	use tokio::io::AsyncReadExt;
+
+	let mut file = tokio::fs::File::open(file_path)
+		.await
+		.map_err(|e| AppError::Custom(format!("Failed to open translation file: {e}")))?;
+
+	let mut contents = String::new();
+	file.read_to_string(&mut contents)
+		.await
+		.map_err(|e| AppError::Custom(format!("Failed to read translation file: {e}")))?;
+
+	let mut translations = Vec::new();
+	let mut invalid_count = 0;
+
+	for (line_num, line) in contents.lines().enumerate() {
+		// Skip empty lines
+		if line.trim().is_empty() {
+			continue;
+		}
+
+		// Skip header line if present
+		if line_num == 0 && line.to_lowercase().contains("tag_id") {
+			continue;
+		}
+
+		// Parse CSV line (simple CSV parsing, handles quoted fields)
+		let fields: Vec<String> = line
+			.split(',')
+			.map(|s| s.trim().trim_matches('"').to_string())
+			.collect();
+
+		if fields.len() < 3 {
+			invalid_count += 1;
+			eprintln!("Warning: Line {} has insufficient fields, skipping", line_num + 1);
+			continue;
+		}
+
+		// Parse tag_id
+		let tag_id = match fields[0].parse::<i64>() {
+			Ok(id) => id,
+			Err(_) => {
+				invalid_count += 1;
+				eprintln!("Warning: Line {} has invalid tag_id, skipping", line_num + 1);
+				continue;
+			}
+		};
+
+		let translated_name = fields[1].trim().to_string();
+		let language_code = fields[2].trim().to_lowercase();
+
+		// Validate language code (ISO 639-1 format: 2 letters)
+		if language_code.len() != 2 || !language_code.chars().all(|c| c.is_ascii_lowercase()) {
+			invalid_count += 1;
+			eprintln!("Warning: Line {} has invalid language_code, skipping", line_num + 1);
+			continue;
+		}
+
+		if translated_name.is_empty() {
+			invalid_count += 1;
+			eprintln!("Warning: Line {} has empty translated_name, skipping", line_num + 1);
+			continue;
+		}
+
+		translations.push((tag_id, translated_name, language_code));
+	}
+
+	Ok((translations, invalid_count))
+}
+
+/// Refresh alias field in Tags table asynchronously
+async fn refresh_tag_aliases(
+	pool: &SqlitePool,
+	translations: Vec<(i64, String, String)>,
+) -> Result<usize, AppError> {
+	let mut updated_count = 0;
+
+	// Process in batches to avoid blocking
+	const BATCH_SIZE: usize = 100;
+	for batch in translations.chunks(BATCH_SIZE) {
+		for (tag_id, translated_name, _language_code) in batch {
+			// Check if tag exists before updating
+			let tag_exists = sqlx::query!(
+				"SELECT tag_id FROM Tags WHERE tag_id = ?",
+				tag_id
+			)
+			.fetch_optional(pool)
+			.await?;
+
+			if tag_exists.is_some() {
+				sqlx::query!(
+					"UPDATE Tags SET alias = ? WHERE tag_id = ?",
+					translated_name,
+					tag_id
+				)
+				.execute(pool)
+				.await?;
+				updated_count += 1;
+			} else {
+				eprintln!("Warning: Tag with id {} not found, skipping", tag_id);
+			}
+		}
+	}
+
+	Ok(updated_count)
+}
+
+#[tauri::command]
+pub async fn upload_translation_dictionary(
+	app: AppHandle,
+	pool: tauri::State<'_, SqlitePool>,
+	file_path: String,
+) -> Result<TranslationUploadResult, AppError> {
+	let source_path = Path::new(&file_path);
+
+	if !source_path.exists() {
+		return Ok(TranslationUploadResult {
+			success: false,
+			message: format!("Translation file does not exist: {file_path}"),
+			file_path: None,
+			valid_entries: 0,
+			invalid_entries: 0,
+			language_code: None,
+		});
+	}
+
+	// Parse translation CSV
+	let (translations, invalid_count) = parse_translation_csv(source_path).await?;
+
+	if translations.is_empty() {
+		return Ok(TranslationUploadResult {
+			success: false,
+			message: "No valid translation entries found in file".to_string(),
+			file_path: None,
+			valid_entries: 0,
+			invalid_entries: invalid_count,
+			language_code: None,
+		});
+	}
+
+	// Get language code from first entry
+	let language_code = translations.first().map(|(_, _, lc)| lc.clone());
+
+	// Get translations directory and save file
+	let translations_dir = get_translations_dir(app.clone())?;
+	let target_filename = if let Some(lc) = &language_code {
+		format!("selected_tags_{}.csv", lc)
+	} else {
+		"selected_tags_unknown.csv".to_string()
+	};
+	let target_path = translations_dir.join(&target_filename);
+
+	// Copy file to translations directory
+	tokio::fs::copy(&source_path, &target_path)
+		.await
+		.map_err(|e| AppError::Custom(format!("Failed to copy translation file: {e}")))?;
+
+	// Refresh alias fields in background
+	let pool_clone = pool.inner().clone();
+	let translations_clone = translations.clone();
+	tokio::spawn(async move {
+		match refresh_tag_aliases(&pool_clone, translations_clone).await {
+			Ok(updated) => {
+				eprintln!("Successfully updated {} tag aliases", updated);
+			}
+			Err(e) => {
+				eprintln!("Error refreshing tag aliases: {e}");
+			}
+		}
+	});
+
+	Ok(TranslationUploadResult {
+		success: true,
+		message: format!(
+			"Translation dictionary uploaded successfully. {} valid entries, {} invalid entries skipped.",
+			translations.len(),
+			invalid_count
+		),
+		file_path: Some(target_path.display().to_string()),
+		valid_entries: translations.len(),
+		invalid_entries: invalid_count,
+		language_code,
+	})
+}
+
+#[tauri::command]
+pub async fn get_translation_status(
+	app: AppHandle,
+	pool: tauri::State<'_, SqlitePool>,
+) -> Result<TranslationStatus, AppError> {
+	let translations_dir = get_translations_dir(app.clone())?;
+
+	// Check for translation files
+	let mut dictionary_path: Option<String> = None;
+	let mut language_code: Option<String> = None;
+	let mut total_translations = 0;
+
+	// Look for translation files
+	if let Ok(entries) = std::fs::read_dir(&translations_dir) {
+		for entry in entries.flatten() {
+			if let Some(name) = entry.file_name().to_str() {
+				if name.starts_with("selected_tags_") && name.ends_with(".csv") {
+					let path = entry.path();
+					dictionary_path = Some(path.display().to_string());
+
+					// Extract language code from filename
+					if let Some(lc) = name.strip_prefix("selected_tags_").and_then(|s| s.strip_suffix(".csv")) {
+						language_code = Some(lc.to_string());
+					}
+
+					// Count translations in database
+					if let Ok(count) = sqlx::query!(
+						"SELECT COUNT(*) as count FROM Tags WHERE alias IS NOT NULL AND alias != ''"
+					)
+					.fetch_one(pool.inner())
+					.await
+					{
+						total_translations = count.count.unwrap_or(0) as usize;
+					}
+
+					break; // Use first found file
+				}
+			}
+		}
+	}
+
+	Ok(TranslationStatus {
+		language_code,
+		dictionary_loaded: dictionary_path.is_some(),
+		dictionary_path,
+		total_translations,
+	})
+}
+
+#[tauri::command]
+pub async fn set_translation_language(
+	app: AppHandle,
+	language_code: String,
+) -> Result<(), AppError> {
+	let store = app.store("translation-settings.json")?;
+	store.set("language_code", language_code);
+	store.save()?;
+	Ok(())
+}
+
+#[tauri::command]
+pub async fn get_translation_language(app: AppHandle) -> Result<Option<String>, AppError> {
+	let store = app.store("translation-settings.json")?;
+	let language_code = store
+		.get("language_code")
+		.and_then(|v| v.as_str())
+		.map(|s| s.to_string());
+	Ok(language_code)
+}
+
+#[tauri::command]
+pub async fn remove_translation_dictionary(
+	app: AppHandle,
+	pool: tauri::State<'_, SqlitePool>,
+) -> Result<(), AppError> {
+	// Clear all aliases in database
+	sqlx::query!("UPDATE Tags SET alias = NULL")
+		.execute(pool.inner())
+		.await?;
+
+	// Remove translation files
+	let translations_dir = get_translations_dir(app.clone())?;
+	if let Ok(entries) = std::fs::read_dir(&translations_dir) {
+		for entry in entries.flatten() {
+			if let Some(name) = entry.file_name().to_str() {
+				if name.starts_with("selected_tags_") && name.ends_with(".csv") {
+					if let Err(e) = std::fs::remove_file(entry.path()) {
+						eprintln!("Warning: Failed to remove translation file {}: {}", name, e);
+					}
+				}
+			}
+		}
+	}
+
+	// Clear language preference
+	let store = app.store("translation-settings.json")?;
+	store.delete("language_code");
+	store.save()?;
+
+	Ok(())
+}

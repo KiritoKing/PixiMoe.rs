@@ -13,6 +13,8 @@ pub struct Tag {
 	#[serde(rename = "type")]
 	pub tag_type: String,
 	pub category_id: i64,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub alias: Option<String>,
 	pub file_count: Option<i64>,
 }
 
@@ -24,12 +26,12 @@ pub struct Tag {
 pub async fn get_all_tags(pool: tauri::State<'_, SqlitePool>) -> Result<Vec<Tag>, AppError> {
 	let tags = sqlx::query!(
 		r#"
-        SELECT t.tag_id, t.name, t.type, t.category_id,
+        SELECT t.tag_id, t.name, t.type, t.category_id, t.alias,
                COUNT(ft.file_hash) as "file_count: i64"
         FROM Tags t
         LEFT JOIN FileTags ft ON t.tag_id = ft.tag_id
         GROUP BY t.tag_id
-        ORDER BY t.name ASC
+        ORDER BY COALESCE(t.alias, t.name) ASC
         "#
 	)
 	.fetch_all(pool.inner())
@@ -40,6 +42,7 @@ pub async fn get_all_tags(pool: tauri::State<'_, SqlitePool>) -> Result<Vec<Tag>
 		name: row.name,
 		tag_type: row.r#type,
 		category_id: row.category_id,
+		alias: row.alias,
 		file_count: Some(row.file_count),
 	})
 	.collect();
@@ -54,11 +57,11 @@ pub async fn get_file_tags(
 ) -> Result<Vec<Tag>, AppError> {
 	let tags = sqlx::query!(
 		r#"
-        SELECT t.tag_id, t.name, t.type, t.category_id
+        SELECT t.tag_id, t.name, t.type, t.category_id, t.alias
         FROM Tags t
         INNER JOIN FileTags ft ON t.tag_id = ft.tag_id
         WHERE ft.file_hash = ?
-        ORDER BY t.name ASC
+        ORDER BY COALESCE(t.alias, t.name) ASC
         "#,
 		file_hash
 	)
@@ -70,6 +73,7 @@ pub async fn get_file_tags(
 		name: row.name,
 		tag_type: row.r#type,
 		category_id: row.category_id,
+		alias: row.alias,
 		file_count: None,
 	})
 	.collect();
@@ -291,15 +295,16 @@ pub async fn search_tags(
 
 	let tags = sqlx::query!(
 		r#"
-        SELECT t.tag_id, t.name, t.type, t.category_id,
+        SELECT t.tag_id, t.name, t.type, t.category_id, t.alias,
                COUNT(ft.file_hash) as file_count
         FROM Tags t
         LEFT JOIN FileTags ft ON t.tag_id = ft.tag_id
-        WHERE t.name LIKE ?
+        WHERE t.name LIKE ? OR t.alias LIKE ?
         GROUP BY t.tag_id
-        ORDER BY COUNT(ft.file_hash) DESC, t.name ASC
+        ORDER BY COUNT(ft.file_hash) DESC, COALESCE(t.alias, t.name) ASC
         LIMIT ?
         "#,
+		search_pattern,
 		search_pattern,
 		limit
 	)
@@ -311,6 +316,7 @@ pub async fn search_tags(
 		name: row.name,
 		tag_type: row.r#type,
 		category_id: row.category_id,
+		alias: row.alias,
 		file_count: Some(row.file_count),
 	})
 	.collect();

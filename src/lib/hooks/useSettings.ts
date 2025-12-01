@@ -232,3 +232,69 @@ export function useFilePicker() {
 		},
 	};
 }
+
+// Translation dictionary types
+export interface TranslationUploadResult {
+	success: boolean;
+	message: string;
+	file_path?: string;
+	valid_entries: number;
+	invalid_entries: number;
+	language_code?: string;
+}
+
+export interface TranslationStatus {
+	language_code?: string;
+	dictionary_loaded: boolean;
+	dictionary_path?: string;
+	total_translations: number;
+}
+
+// Hooks for translation management
+export function useUploadTranslationDictionary() {
+	return useMutation({
+		mutationFn: async (filePath: string): Promise<TranslationUploadResult> => {
+			const result = await invoke<TranslationUploadResult>("upload_translation_dictionary", {
+				filePath,
+			});
+			return result;
+		},
+	});
+}
+
+export function useTranslationStatus() {
+	return useQuery({
+		queryKey: ["translation_status"],
+		queryFn: async (): Promise<TranslationStatus> => {
+			const result = await invoke<TranslationStatus>("get_translation_status");
+			return result;
+		},
+		refetchInterval: 5000, // Refetch every 5 seconds
+	});
+}
+
+export function useSetTranslationLanguage() {
+	return useMutation({
+		mutationFn: async (languageCode: string): Promise<void> => {
+			await invoke("set_translation_language", { languageCode });
+		},
+	});
+}
+
+export function useTranslationLanguage() {
+	return useQuery({
+		queryKey: ["translation_language"],
+		queryFn: async (): Promise<string | null> => {
+			const result = await invoke<string | null>("get_translation_language");
+			return result;
+		},
+	});
+}
+
+export function useRemoveTranslationDictionary() {
+	return useMutation({
+		mutationFn: async (): Promise<void> => {
+			await invoke("remove_translation_dictionary");
+		},
+	});
+}

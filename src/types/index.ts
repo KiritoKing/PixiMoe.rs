@@ -16,6 +16,7 @@ export interface Tag {
 	name: string;
 	type: string; // Legacy field, kept for backward compatibility
 	category_id: number; // New field for category system
+	alias?: string | null; // Translated name, null if no translation available
 	file_count?: number;
 }
 
