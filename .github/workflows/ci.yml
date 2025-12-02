@@ -201,7 +201,8 @@ jobs:
             libxfixes-dev \
             libxrandr-dev \
             libxss1 \
-            libasound2-dev
+            libasound2-dev \
+            xdg-utils
 
       - name: Build Tauri application
         run: pnpm tauri build --target ${{ matrix.target }}
