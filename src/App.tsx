@@ -8,14 +8,17 @@ import { SettingsPanel } from "./components/settings/SettingsPanel";
 import { TagFilterPanel } from "./components/tags/TagFilterPanel";
 import { ThemeToggle } from "./components/theme-toggle";
 import { useFiles } from "./lib/hooks/useFiles";
+import { useHealthStatusFiles } from "./lib/hooks/useImageHealth";
 import { useKeyboardShortcuts } from "./lib/hooks/useKeyboardShortcuts";
 import { useSearchFiles } from "./lib/hooks/useSearchFiles";
 import { useTauriEvent } from "./lib/hooks/useTauriEvent";
+import type { ImageHealthStatus } from "./types";
 import "./App.css";
 
 function App() {
 	const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 	const [favoritesOnly, setFavoritesOnly] = useState(false);
+	const [healthFilter, setHealthFilter] = useState<ImageHealthStatus | null>(null);
 	const queryClient = useQueryClient();
 	const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -69,6 +72,20 @@ function App() {
 		[queryClient]
 	);
 
+	// Listen for health check completion events to refresh file list with updated health status
+	useTauriEvent<{ total_checked: number; issues_found: number }>(
+		"health_check_complete",
+		(result) => {
+			console.log(
+				`Health check complete: ${result.total_checked} files checked, ${result.issues_found} issues found`
+			);
+			// Invalidate file queries to refresh with updated health status
+			queryClient.invalidateQueries({ queryKey: ["files"] });
+			queryClient.invalidateQueries({ queryKey: ["image-health"] });
+		},
+		[queryClient]
+	);
+
 	// Use search if tags are selected or favorites filter is active, otherwise get all files
 	const { data: allFiles, isLoading: allLoading } = useFiles();
 	const { data: filteredFiles, isLoading: searchLoading } = useSearchFiles(
@@ -76,11 +93,31 @@ function App() {
 		favoritesOnly
 	);
 
-	// If we have filters (tags or favorites), use filtered results
-	// Otherwise use all files
-	const hasFilters = selectedTagIds.length > 0 || favoritesOnly;
-	const files = hasFilters ? filteredFiles : allFiles;
-	const isLoading = hasFilters ? searchLoading : allLoading;
+	// Get health status filtered files if health filter is active
+	const { data: healthFilteredFiles, isLoading: healthLoading } = useHealthStatusFiles(
+		healthFilter || ""
+	);
+
+	// Determine which files to show based on active filters
+	const hasTagOrFavoriteFilters = selectedTagIds.length > 0 || favoritesOnly;
+	const hasHealthFilter = !!healthFilter;
+
+	let files: any[] | undefined;
+	let isLoading: boolean;
+
+	if (hasHealthFilter) {
+		// Health filter takes precedence
+		files = healthFilteredFiles;
+		isLoading = healthLoading;
+	} else if (hasTagOrFavoriteFilters) {
+		// Tag/favorite filters
+		files = filteredFiles;
+		isLoading = searchLoading;
+	} else {
+		// All files
+		files = allFiles;
+		isLoading = allLoading;
+	}
 
 	// Get file hashes for FavoriteCheckbox
 	const fileHashes = files?.map((f) => f.file_hash) ?? [];
@@ -138,6 +175,8 @@ function App() {
 							favoritesOnly={favoritesOnly}
 							onFavoritesOnlyChange={setFavoritesOnly}
 							fileHashes={fileHashes}
+							healthFilter={healthFilter}
+							onHealthFilterChange={setHealthFilter}
 						/>
 					</div>
 

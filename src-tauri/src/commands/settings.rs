@@ -1220,8 +1220,7 @@ pub async fn set_translation_language(
 
 	if !available_languages.contains(&language_code) {
 		return Err(AppError::Custom(format!(
-			"Language '{}' not found in dictionary. Available: {:?}",
-			language_code, available_languages
+			"Language '{language_code}' not found in dictionary. Available: {available_languages:?}"
 		)));
 	}
 
@@ -1261,7 +1260,7 @@ pub async fn remove_translation_dictionary(
 	let dictionary_path = translations_dir.join("translations.csv");
 	if dictionary_path.exists() {
 		if let Err(e) = std::fs::remove_file(&dictionary_path) {
-			eprintln!("Warning: Failed to remove translation file: {}", e);
+			eprintln!("Warning: Failed to remove translation file: {e}");
 		}
 	}
 

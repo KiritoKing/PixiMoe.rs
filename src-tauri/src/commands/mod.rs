@@ -6,5 +6,6 @@ pub mod categories;
 pub mod debug_visualization;
 pub mod favorites;
 pub mod files;
+pub mod health;
 pub mod settings;
 pub mod tags;

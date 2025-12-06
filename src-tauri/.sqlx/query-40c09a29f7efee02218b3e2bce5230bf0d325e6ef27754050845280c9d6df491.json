@@ -42,6 +42,16 @@
         "name": "is_missing",
         "ordinal": 7,
         "type_info": "Integer"
+      },
+      {
+        "name": "thumbnail_health",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "last_health_check",
+        "ordinal": 9,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
@@ -55,7 +65,9 @@
       false,
       false,
       false,
-      false
+      false,
+      false,
+      true
     ]
   },
   "hash": "40c09a29f7efee02218b3e2bce5230bf0d325e6ef27754050845280c9d6df491"

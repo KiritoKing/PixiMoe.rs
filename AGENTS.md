@@ -73,42 +73,98 @@ import { ImageCard } from "@/components/gallery/ImageCard"
 
 ## SQLx Database Migration Rules
 
-**项目使用 SQLx 离线模式，修改数据库 schema 后必须更新离线元数据。**
+**项目使用 SQLx 离线模式，修改数据库 schema 后必须更新离线元数据，否则会导致编译错误。**
 
-### 修改数据库 Schema 后的必要步骤
+### 修改数据库 Schema 后的强制执行步骤
 
-当添加新迁移文件或修改 SQL 查询后，**必须**执行：
+**在以下情况后必须执行完整流程：**
+- 添加新的迁移文件 (`migrations/*.sql`)
+- 修改现有 SQL 查询（特别是添加新字段）
+- 出现 `no such column` 或相关编译错误
 
 ```bash
+# Step 1: 进入 src-tauri 目录
+cd src-tauri
+
+# Step 2: 设置数据库环境变量（必须使用现有开发数据库）
+export DATABASE_URL="sqlite:../piximoe.db"
+
+# Step 3: 运行所有未执行的迁移
+sqlx migrate run --source ../migrations
+
+# Step 4: 重新生成离线查询元数据（关键步骤）
+cargo sqlx prepare
+
+# Step 5: 验证编译成功
+cargo check
+```
+
+### 新建迁移文件的完整流程
+
+```bash
+cd src-tauri
+export DATABASE_URL="sqlite:../piximoe.db"
+
+# 1. 创建新迁移文件（自动生成时间戳前缀）
+sqlx migrate add your_migration_name --source ../migrations
+
+# 2. 编辑生成的迁移文件
+# 文件位置：../migrations/YYYYMMDDHHMMSS_your_migration_name.sql
+
+# 3. 执行迁移并更新元数据
+sqlx migrate run --source ../migrations
+cargo sqlx prepare
+
+# 4. 提交变更到版本控制
+git add ../migrations/YOUR_MIGRATION_FILE.sql .sqlx/
+git commit -m "Add migration: your_migration_name"
+```
+
+### 绝对关键点
+
+1. **数据库路径**：必须使用 `../piximoe.db`，不要创建临时数据库
+2. **元数据更新**：`cargo sqlx prepare` 是必须的，否则 CI 会编译失败
+3. **版本控制**：`.sqlx/` 目录必须提交，包含所有查询的离线验证信息
+4. **字段映射**：使用 `COALESCE(field, default_value) as field_alias` 处理 NULL 值
+5. **查询一致性**：所有 FileRecord 查询必须包含相同字段集合
+
+### 处理编译错误的快速诊断
+
+**错误类型：`missing fields` 在 FileRecord 初始化**
+```rust
+// 错误示例：缺少新字段
+FileRecord {
+    file_hash: row.get("file_hash"),
+    // 缺少 thumbnail_health, last_health_check
+}
+
+// 正确做法：添加所有新字段
+FileRecord {
+    file_hash: row.get("file_hash"),
+    // ... 其他字段
+    thumbnail_health: Some(row.get("thumbnail_health")),
+    last_health_check: row.get("last_health_check"),
+}
+```
+
+**错误类型：`no such column`**
+```bash
+# 立即执行
 cd src-tauri
 export DATABASE_URL="sqlite:../piximoe.db"
 sqlx migrate run --source ../migrations
 cargo sqlx prepare
 ```
 
-或使用脚本：`./scripts/prepare-sqlx.sh`
+### 验证清单
 
-### 创建新迁移
+每次修改数据库相关代码后，确保：
+- [ ] Migration 文件语法正确
+- [ ] Migration 已成功执行
+- [ ] `cargo sqlx prepare` 已运行
+- [ ] `.sqlx/` 文件已更新
+- [ ] `cargo check` 编译通过
+- [ ] 所有查询字段映射完整
+- [ ] 新增字段已添加到相关 struct 和查询
 
-```bash
-cd src-tauri
-export DATABASE_URL="sqlite:../piximoe.db"
-sqlx migrate add migration_name --source ../migrations
-# 编辑迁移文件后
-sqlx migrate run --source ../migrations
-cargo sqlx prepare
-```
-
-### 关键点
-
-1. **使用现有开发数据库**：不要创建临时数据库，使用 `../piximoe.db`
-2. **更新离线元数据**：每次修改 SQL 查询后运行 `cargo sqlx prepare`
-3. **提交 `.sqlx/` 目录**：离线元数据文件需要提交到版本控制
-4. **CI 使用离线模式**：`SQLX_OFFLINE=true`，不需要数据库连接
-
-### 常见错误
-
-- **"no such column" 编译错误**：运行 `sqlx migrate run` 和 `cargo sqlx prepare`
-- **CI 编译失败**：检查 `.sqlx/` 目录是否已提交
-
-详细文档参考：`@/docs/sqlx-migration-guide.md`
+详细文档和故障排除：`@/docs/sqlx-migration-guide.md`

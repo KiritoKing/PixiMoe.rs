@@ -1,5 +1,13 @@
 // TypeScript type definitions matching Rust backend structures
 
+export type ImageHealthStatus =
+	| "healthy"
+	| "thumbnail_missing"
+	| "original_missing"
+	| "both_missing"
+	| "original_corrupted"
+	| "thumbnail_corrupted";
+
 export interface FileRecord {
 	file_hash: string;
 	original_path: string;
@@ -9,6 +17,9 @@ export interface FileRecord {
 	height: number;
 	date_imported: number;
 	is_missing: number;
+	thumbnail_health?: number; // 0=healthy, 1=missing, 2=corrupted
+	last_health_check?: number; // Unix timestamp
+	health_status?: ImageHealthStatus;
 }
 
 export interface Tag {
@@ -70,4 +81,37 @@ export interface Notification {
 	timestamp: number;
 	read: boolean;
 	pinned: boolean;
+}
+
+// Health check related types
+export interface HealthCheckResult {
+	total_checked: number;
+	healthy_count: number;
+	issues_found: number;
+	thumbnail_missing_count: number;
+	original_missing_count: number;
+	thumbnail_corrupted_count: number;
+	original_corrupted_count: number;
+	both_missing_count: number;
+	has_missing_originals: boolean;
+}
+
+export interface HealthCheckProgressEvent {
+	stage: string;
+	message: string;
+	file_hash?: string;
+	current?: number;
+	total?: number;
+	status?: ImageHealthStatus;
+}
+
+export interface FileWithHealthStatus extends FileRecord {
+	thumbnail_health: number;
+	last_health_check?: number;
+}
+
+export interface RecoveryResult {
+	success: boolean;
+	message: string;
+	regenerated_count?: number;
 }

@@ -29,6 +29,7 @@ pub mod ai;
 pub mod commands;
 pub mod db;
 pub mod error;
+pub mod health_check;
 pub mod protocols;
 
 use tauri::Manager;
@@ -99,6 +100,7 @@ pub fn run() {
 
 				// Regenerate missing thumbnails in background
 				let pool_clone = pool.clone();
+				let app_handle_for_health = app_handle.clone();
 				tokio::spawn(async move {
 					if let Err(e) = commands::files::regenerate_missing_thumbnails(
 						&app_handle_for_thumbnails,
@@ -107,6 +109,19 @@ pub fn run() {
 					.await
 					{
 						eprintln!("Failed to regenerate missing thumbnails: {e}");
+					}
+				});
+
+				// Run health check in background after startup
+				// No delay needed - health check runs asynchronously and won't block UI
+				let pool_for_health = pool.clone();
+				tokio::spawn(async move {
+					let health_checker = health_check::ImageHealthChecker::new();
+					if let Err(e) = health_checker
+						.check_all_files_health(&pool_for_health, &app_handle_for_health)
+						.await
+					{
+						eprintln!("Failed to run startup health check: {e}");
 					}
 				});
 
@@ -156,6 +171,12 @@ pub fn run() {
 			commands::favorites::add_favorites,
 			commands::favorites::remove_favorites,
 			commands::favorites::get_favorite_count,
+			// Health check commands
+			commands::health::check_all_images_health,
+			commands::health::get_files_by_health_status,
+			commands::health::regenerate_missing_thumbnails_health,
+			commands::health::get_health_summary,
+			commands::health::check_file_health,
 			// Settings commands
 			commands::settings::upload_tag_model_file,
 			commands::settings::upload_label_map_file,

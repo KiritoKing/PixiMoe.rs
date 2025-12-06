@@ -33,6 +33,8 @@ pub struct FileRecord {
 	pub height: i64,
 	pub date_imported: i64,
 	pub is_missing: i64,
+	pub thumbnail_health: Option<i64>,
+	pub last_health_check: Option<i64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -598,60 +600,70 @@ pub async fn get_all_files(
 ) -> Result<Vec<FileRecord>, AppError> {
 	let offset = offset.unwrap_or(0);
 
-	// If limit is None or 0, return all files (no limit)
-	let files = if let Some(limit_val) = limit {
+	// Use raw queries to avoid sqlx macro issues with COALESCE
+	let rows = if let Some(limit_val) = limit {
 		if limit_val > 0 {
-			sqlx::query_as!(
-				FileRecord,
+			sqlx::query(
 				r#"
                 SELECT file_hash, original_path, file_size_bytes, file_last_modified, width, height,
-                       date_imported, is_missing
+                       date_imported, is_missing, COALESCE(thumbnail_health, 0) as thumbnail_health, last_health_check
                 FROM Files
-                WHERE is_missing = 0
                 ORDER BY date_imported DESC
                 LIMIT ? OFFSET ?
                 "#,
-				limit_val,
-				offset
 			)
+			.bind(limit_val)
+			.bind(offset)
 			.fetch_all(pool.inner())
 			.await?
 		} else {
 			// limit is 0 or negative, return all files
 			// SQLite requires LIMIT with OFFSET, so use a very large LIMIT
-			sqlx::query_as!(
-				FileRecord,
+			sqlx::query(
 				r#"
                 SELECT file_hash, original_path, file_size_bytes, file_last_modified, width, height,
-                       date_imported, is_missing
+                       date_imported, is_missing, COALESCE(thumbnail_health, 0) as thumbnail_health, last_health_check
                 FROM Files
-                WHERE is_missing = 0
                 ORDER BY date_imported DESC
                 LIMIT -1 OFFSET ?
                 "#,
-				offset
 			)
+			.bind(offset)
 			.fetch_all(pool.inner())
 			.await?
 		}
 	} else {
 		// limit is None, return all files
 		// SQLite requires LIMIT with OFFSET, so use a very large LIMIT
-		sqlx::query_as!(
-			FileRecord,
+		sqlx::query(
 			r#"
             SELECT file_hash, original_path, file_size_bytes, file_last_modified, width, height,
-                   date_imported, is_missing
+                   date_imported, is_missing, COALESCE(thumbnail_health, 0) as thumbnail_health, last_health_check
             FROM Files
-            WHERE is_missing = 0
             ORDER BY date_imported DESC
             LIMIT -1 OFFSET ?
             "#,
-			offset
 		)
+		.bind(offset)
 		.fetch_all(pool.inner())
 		.await?
 	};
+
+	let files: Vec<FileRecord> = rows
+		.into_iter()
+		.map(|row| FileRecord {
+			file_hash: row.get("file_hash"),
+			original_path: row.get("original_path"),
+			file_size_bytes: row.get("file_size_bytes"),
+			file_last_modified: row.get("file_last_modified"),
+			width: row.get("width"),
+			height: row.get("height"),
+			date_imported: row.get("date_imported"),
+			is_missing: row.get("is_missing"),
+			thumbnail_health: Some(row.get("thumbnail_health")),
+			last_health_check: row.get("last_health_check"),
+		})
+		.collect();
 
 	Ok(files)
 }
@@ -661,18 +673,30 @@ pub async fn get_file_by_hash(
 	pool: tauri::State<'_, SqlitePool>,
 	file_hash: String,
 ) -> Result<Option<FileRecord>, AppError> {
-	let file = sqlx::query_as!(
-		FileRecord,
+	let row = sqlx::query(
 		r#"
         SELECT file_hash, original_path, file_size_bytes, file_last_modified, width, height,
-               date_imported, is_missing
+               date_imported, is_missing, COALESCE(thumbnail_health, 0) as thumbnail_health, last_health_check
         FROM Files
         WHERE file_hash = ?
         "#,
-		file_hash
 	)
+	.bind(&file_hash)
 	.fetch_optional(pool.inner())
 	.await?;
+
+	let file = row.map(|row| FileRecord {
+		file_hash: row.get("file_hash"),
+		original_path: row.get("original_path"),
+		file_size_bytes: row.get("file_size_bytes"),
+		file_last_modified: row.get("file_last_modified"),
+		width: row.get("width"),
+		height: row.get("height"),
+		date_imported: row.get("date_imported"),
+		is_missing: row.get("is_missing"),
+		thumbnail_health: Some(row.get("thumbnail_health")),
+		last_health_check: row.get("last_health_check"),
+	});
 
 	Ok(file)
 }
@@ -692,14 +716,13 @@ pub async fn search_files_by_tags(
 	}
 
 	if tag_ids.is_empty() && favorites_only {
-		// Only favorites filter
+		// Only favorites filter - include health status fields
 		let rows = sqlx::query(
 			r#"
             SELECT DISTINCT f.file_hash, f.original_path, f.file_size_bytes, f.file_last_modified,
-                   f.width, f.height, f.date_imported, f.is_missing
+                   f.width, f.height, f.date_imported, f.is_missing, COALESCE(f.thumbnail_health, 0) as thumbnail_health, f.last_health_check
             FROM Files f
             INNER JOIN Favorites fav ON f.file_hash = fav.file_hash
-            WHERE f.is_missing = 0
             ORDER BY f.date_imported DESC
             "#,
 		)
@@ -717,6 +740,8 @@ pub async fn search_files_by_tags(
 				height: row.get("height"),
 				date_imported: row.get("date_imported"),
 				is_missing: row.get("is_missing"),
+				thumbnail_health: Some(row.get("thumbnail_health")),
+				last_health_check: row.get("last_health_check"),
 			})
 			.collect();
 
@@ -734,11 +759,11 @@ pub async fn search_files_by_tags(
 	let query = format!(
 		r#"
         SELECT DISTINCT f.file_hash, f.original_path, f.file_size_bytes, f.file_last_modified,
-               f.width, f.height, f.date_imported, f.is_missing
+               f.width, f.height, f.date_imported, f.is_missing, COALESCE(f.thumbnail_health, 0) as thumbnail_health, f.last_health_check
         FROM Files f
         INNER JOIN FileTags ft ON f.file_hash = ft.file_hash
         {favorites_join}
-        WHERE f.is_missing = 0 AND ft.tag_id IN ({placeholders})
+        WHERE ft.tag_id IN ({placeholders})
         ORDER BY f.date_imported DESC
         "#
 	);
@@ -761,6 +786,8 @@ pub async fn search_files_by_tags(
 			height: row.get("height"),
 			date_imported: row.get("date_imported"),
 			is_missing: row.get("is_missing"),
+			thumbnail_health: Some(row.get("thumbnail_health")),
+			last_health_check: row.get("last_health_check"),
 		})
 		.collect();
 
@@ -785,18 +812,31 @@ pub async fn regenerate_missing_thumbnails(
 ) -> Result<(), AppError> {
 	let thumbnail_dir = get_thumbnail_dir(app)?;
 
-	// Get all files from database
-	let files = sqlx::query_as!(
-		FileRecord,
+	// Get all files from database that need thumbnails
+	let files = sqlx::query(
 		r#"
         SELECT file_hash, original_path, file_size_bytes, file_last_modified, width, height,
-               date_imported, is_missing
+               date_imported, is_missing, COALESCE(thumbnail_health, 0) as thumbnail_health, last_health_check
         FROM Files
-        WHERE is_missing = 0
+        WHERE is_missing = 0 OR COALESCE(thumbnail_health, 0) != 2
         "#
 	)
 	.fetch_all(pool)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| FileRecord {
+		file_hash: row.get("file_hash"),
+		original_path: row.get("original_path"),
+		file_size_bytes: row.get("file_size_bytes"),
+		file_last_modified: row.get("file_last_modified"),
+		width: row.get("width"),
+		height: row.get("height"),
+		date_imported: row.get("date_imported"),
+		is_missing: row.get("is_missing"),
+		thumbnail_health: Some(row.get("thumbnail_health")),
+		last_health_check: row.get("last_health_check"),
+	})
+	.collect::<Vec<FileRecord>>();
 
 	let mut regenerated_count = 0;
 	let mut tasks = Vec::new();

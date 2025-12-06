@@ -80,8 +80,8 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
 	const widthMeasureRef = useRef<HTMLDivElement>(null); // Container for width measurement
 
 	// Constants for layout calculation
-	const gap = 16; // gap-4 = 16px
-	const padding = 16; // p-4 = 16px
+	const gap = 12; // gap-3 = 12px (reduced for better density)
+	const padding = 12; // p-3 = 12px (reduced padding)
 	// Dynamic minItemSize based on thumbnail size selection
 	// Use more distinct values to ensure visible differences
 	const minItemSize = useMemo(() => {
@@ -97,6 +97,11 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
 		}
 	}, [thumbnailSize]);
 
+	// Extra padding on right side to account for scrollbar
+	const scrollbarPadding = 8;
+	// Total horizontal padding: left + right + scrollbar buffer
+	const totalHorizontalPadding = padding * 2 + scrollbarPadding;
+
 	// Calculate column count based on container width
 	// Use dynamic calculation with actual gap and padding values
 	const columnCount = useMemo(() => {
@@ -106,17 +111,17 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
 			if (widthMeasureRef.current?.parentElement) {
 				const parentWidth = widthMeasureRef.current.parentElement.clientWidth;
 				if (parentWidth > 0) {
-					return getColumnCount(parentWidth, minItemSize, gap, padding * 2);
+					return getColumnCount(parentWidth, minItemSize, gap, totalHorizontalPadding);
 				}
 			}
 			// Fallback to window width
 			if (typeof window !== "undefined") {
-				return getColumnCount(window.innerWidth, minItemSize, gap, padding * 2);
+				return getColumnCount(window.innerWidth, minItemSize, gap, totalHorizontalPadding);
 			}
 			return 2; // Fallback default
 		}
-		return getColumnCount(containerWidth, minItemSize, gap, padding * 2);
-	}, [containerWidth, minItemSize]);
+		return getColumnCount(containerWidth, minItemSize, gap, totalHorizontalPadding);
+	}, [containerWidth, minItemSize, totalHorizontalPadding]);
 
 	// Use callback ref to ensure we get the element when it's mounted
 	const widthMeasureCallbackRef = useCallback((element: HTMLDivElement | null) => {
@@ -210,13 +215,13 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
 	}, []); // Empty deps - only run on mount/unmount
 
 	// Calculate item size (considering gap)
-	const availableWidth = containerWidth > 0 ? containerWidth - padding * 2 : 0;
+	const availableWidth = containerWidth > 0 ? containerWidth - totalHorizontalPadding : 0;
 	const itemSize = useMemo(() => {
 		if (columnCount === 0) return minItemSize; // Default estimate
 		if (containerWidth === 0 || availableWidth <= 0) {
 			// Estimate based on window width if container not measured yet
 			if (typeof window !== "undefined") {
-				const estimatedWidth = window.innerWidth - padding * 2;
+				const estimatedWidth = window.innerWidth - totalHorizontalPadding;
 				if (estimatedWidth > 0 && columnCount > 0) {
 					return Math.floor((estimatedWidth - gap * (columnCount - 1)) / columnCount);
 				}
@@ -236,7 +241,7 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
 		}
 		// Ensure minimum size
 		return Math.max(calculatedSize, minItemSize);
-	}, [columnCount, containerWidth, availableWidth, minItemSize]);
+	}, [columnCount, containerWidth, availableWidth, minItemSize, totalHorizontalPadding]);
 
 	// Calculate total number of rows
 	const totalRows = Math.ceil(files.length / columnCount);
@@ -607,7 +612,7 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
 					ref={containerRef}
 					className="relative"
 					style={{
-						height: `${totalHeight}px`,
+						height: `${totalHeight + padding * 2}px`,
 						width: "100%",
 						boxSizing: "border-box",
 					}}
@@ -628,20 +633,20 @@ export function ImageGrid({ files: customFiles, isLoading: customLoading }: Imag
 									left: 0,
 									width: "100%",
 									height: `${virtualRow.size}px`,
-									transform: `translateY(${virtualRow.start}px)`,
+									transform: `translateY(${virtualRow.start + padding}px)`,
 									boxSizing: "border-box",
 								}}
 							>
 								<div
-									className="grid gap-4"
+									className="grid gap-3"
 									style={{
 										gridTemplateColumns: `repeat(${columnCount}, ${itemSize}px)`,
-										width: `${itemSize * columnCount + gap * (columnCount - 1)}px`,
+										width: "100%",
 										maxWidth: "100%",
 										paddingLeft: `${padding}px`,
-										paddingRight: `${padding}px`,
+										paddingRight: `${padding + 8}px`,
 										boxSizing: "border-box",
-										margin: "0 auto",
+										justifyContent: "start",
 									}}
 								>
 									{rowFiles.map((file) => (

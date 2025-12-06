@@ -64,7 +64,7 @@ export function TagManager() {
 			filtered = filtered.filter(
 				(tag) =>
 					tag.name.toLowerCase().includes(query) ||
-					(tag.alias && tag.alias.toLowerCase().includes(query))
+					tag.alias?.toLowerCase().includes(query)
 			);
 		}
 

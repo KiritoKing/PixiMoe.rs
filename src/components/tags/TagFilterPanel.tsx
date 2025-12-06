@@ -1,6 +1,9 @@
+import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FavoriteCheckbox } from "@/components/favorites/FavoriteCheckbox";
+import { HealthStatusFilter } from "@/components/gallery/HealthStatusFilter";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useTags } from "@/lib/hooks/useTags";
 import { getUIPreference, setUIPreference, UI_PREFERENCE_KEYS } from "@/lib/ui-persister";
-import type { Tag } from "@/types";
+import type { ImageHealthStatus, Tag } from "@/types";
 import { CollapsibleCategorySection } from "./CollapsibleCategorySection";
 import { EmptyTagsSection } from "./EmptyTagsSection";
 import { SelectedTagsArea } from "./SelectedTagsArea";
@@ -21,6 +24,8 @@ interface TagFilterPanelProps {
 	favoritesOnly?: boolean;
 	onFavoritesOnlyChange?: (favoritesOnly: boolean) => void;
 	fileHashes?: string[];
+	healthFilter?: ImageHealthStatus | null;
+	onHealthFilterChange?: (healthFilter: ImageHealthStatus | null) => void;
 }
 
 export function TagFilterPanel({
@@ -30,6 +35,8 @@ export function TagFilterPanel({
 	favoritesOnly = false,
 	onFavoritesOnlyChange,
 	fileHashes = [],
+	healthFilter,
+	onHealthFilterChange,
 }: TagFilterPanelProps) {
 	const { data: tags, isLoading: tagsLoading } = useTags();
 	const { data: categories, isLoading: categoriesLoading } = useCategories();
@@ -37,6 +44,7 @@ export function TagFilterPanel({
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 	const [showEmptyTags, setShowEmptyTags] = useState(false);
 	const [sortMode, setSortMode] = useState<SortMode>("alphabetical");
+	const [healthFilterExpanded, setHealthFilterExpanded] = useState(false);
 
 	// Load persisted preferences
 	useEffect(() => {
@@ -95,8 +103,7 @@ export function TagFilterPanel({
 		const query = debouncedSearchQuery.toLowerCase();
 		return tags.filter(
 			(tag) =>
-				tag.name.toLowerCase().includes(query) ||
-				(tag.alias && tag.alias.toLowerCase().includes(query))
+				tag.name.toLowerCase().includes(query) || tag.alias?.toLowerCase().includes(query)
 		);
 	}, [tags, debouncedSearchQuery]);
 
@@ -273,6 +280,29 @@ export function TagFilterPanel({
 					)}
 				</div>
 			</ScrollArea>
+
+			{/* Health status filter at bottom */}
+			<div className="border-t p-3">
+				<Collapsible open={healthFilterExpanded} onOpenChange={setHealthFilterExpanded}>
+					<CollapsibleTrigger asChild>
+						<button
+							type="button"
+							className="flex items-center justify-between w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-1"
+						>
+							<span>Image Health Issues</span>
+							<ChevronDown
+								className={`h-4 w-4 transition-transform ${healthFilterExpanded ? "rotate-180" : ""}`}
+							/>
+						</button>
+					</CollapsibleTrigger>
+					<CollapsibleContent className="mt-3">
+						<HealthStatusFilter
+							currentFilter={healthFilter}
+							onFilterChange={onHealthFilterChange}
+						/>
+					</CollapsibleContent>
+				</Collapsible>
+			</div>
 		</div>
 	);
 }
